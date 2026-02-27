@@ -33,8 +33,7 @@ SIGNAL_LONG = "LONG"
 SIGNAL_SHORT = "SHORT"
 
 # Default config path
-# Issue #606: Check GCS-synced location first, fallback to config/
-DEFAULT_CONFIG_PATH = os.getenv("SIGNAL_DEFINITIONS_PATH", "gcs-config/signal_definitions.yaml")
+DEFAULT_CONFIG_PATH = os.getenv("SIGNAL_DEFINITIONS_PATH", "config/signal_definitions.yaml")
 
 # Indicator column name mappings (support multiple variants)
 INDICATOR_ALIASES: dict[str, list[str]] = {

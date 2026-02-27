@@ -282,7 +282,7 @@ def load_symbol_data(symbol: str, signal_type: str = "sma") -> pd.DataFrame:
     """
     # V3 signals for USDCAD use D1 timeframe
     if signal_type == "v3" and symbol.lower() == "usdcad":
-        csv_path = Path("/home/dixter/Projects/trading/data/csv") / f"{symbol.lower()}_d1_with_indicators.csv"
+        csv_path = Path("data/csv") / f"{symbol.lower()}_d1_with_indicators.csv"
         logger.info(f"Loading D1 data for USDCAD V3 from {csv_path}")
     else:
         csv_path = POSTGRES_DATA_PATH / f"{symbol}_m30_rates.csv"

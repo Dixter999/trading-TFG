@@ -1,7 +1,6 @@
 # TFG Project Dependencies
 # Minimal subset of trading project requirements for local academic work.
-# Excludes: google-cloud-*, kubernetes, prometheus, telegram, websockets,
-#           httpx, aiohttp, fastapi, uvicorn, and other remote infrastructure deps.
+# Excludes remote infrastructure and production-only dependencies.
 
 # Core Data & Scientific Computing
 numpy>=1.24.0

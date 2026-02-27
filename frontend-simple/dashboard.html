@@ -1017,8 +1017,8 @@
             `;
         }
 
-        // MT5 broker (OANDATMS) stores timestamps in CET/CEST, not UTC.
-        // Verified 2026-02-25: broker offset is +3600s (1h) from UTC in winter.
+        // MT5 broker stores timestamps in CET/CEST, not UTC.
+        // Broker offset is +3600s (1h) from UTC in winter.
         // CET = UTC+1 (Nov-Feb), CEST = UTC+2 (Apr-Sep).
         function getBrokerUtcOffsetMs(timestampMs) {
             const d = new Date(timestampMs);

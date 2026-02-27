@@ -506,7 +506,7 @@ class HybridExitEvaluator:
         Returns tracking dict or None if unavailable.
         """
         tracking_paths = [
-            Path("/app/results/pipeline_tracking.json"),  # K8s pod path
+            Path("/app/results/pipeline_tracking.json"),  # Container path
             Path("results/pipeline_tracking.json"),  # Local dev path
         ]
 

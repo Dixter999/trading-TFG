@@ -694,9 +694,9 @@
                                 </select>
                                 <select id="orchestrator-filter-vm" onchange="orchestratorApplyFilter()" style="font-size: 12px;">
                                     <option value="">All VMs</option>
-                                    <option value="contabo-01">contabo-01</option>
-                                    <option value="contabo-02">contabo-02</option>
-                                    <option value="wsl-local">wsl-local</option>
+                                    <option value="vm-01">vm-01</option>
+                                    <option value="vm-02">vm-02</option>
+                                    <option value="local">local</option>
                                 </select>
                             </div>
                         </div>
@@ -859,8 +859,8 @@
             return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
         }
 
-        // MT5 broker (OANDATMS) stores timestamps in CET/CEST, not UTC.
-        // Verified 2026-02-25: broker offset is exactly +3600s (1h) from UTC in winter.
+        // MT5 broker stores timestamps in CET/CEST, not UTC.
+        // Broker offset is +3600s (1h) from UTC in winter.
         // CET = UTC+1 (Nov-Feb), CEST = UTC+2 (Apr-Sep).
         // Transitions: last Sunday of March (→CEST) and last Sunday of October (→CET).
         function getBrokerUtcOffsetMs(timestampMs) {

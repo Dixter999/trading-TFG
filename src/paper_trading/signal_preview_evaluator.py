@@ -61,12 +61,11 @@ def load_signal_definitions() -> Dict[str, Dict]:
         logger.warning("PyYAML not available, using inferred conditions")
         return {}
 
-    # Try multiple paths (gcs-config is the shared volume from init container)
+    # Try multiple paths (container path, then local paths)
     config_paths = [
-        "/app/gcs-config/signal_definitions.yaml",
+        "/app/config/signal_definitions.yaml",
         os.path.join(os.path.dirname(__file__), "..", "..", "config", "signal_definitions.yaml"),
         "config/signal_definitions.yaml",
-        "/home/dixter/Projects/trading/config/signal_definitions.yaml",
     ]
 
     for path in config_paths:
