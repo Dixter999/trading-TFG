@@ -1,0 +1,2601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Performance Analytics</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    background: #f5f5f5;
+    color: #1f1f1f;
+    line-height: 1.5;
+    padding: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  h1 { font-size: 18px; font-weight: 600; color: #1f1f1f; }
+  h2 { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+  h3 { font-size: 13px; font-weight: 600; color: #4b5563; margin-bottom: 8px; }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; padding: 12px 16px;
+    background: #ffffff; border-radius: 8px; border: 1px solid #e0e0e0;
+  }
+  .header p { color: #6b7280; font-size: 12px; }
+  .header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; }
+
+  .nav-bar {
+    display: flex; justify-content: center; gap: 8px; margin-bottom: 16px;
+  }
+  .nav-bar a {
+    color: #4b5563; text-decoration: none; font-size: 12px;
+    padding: 6px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
+    background: #ffffff; transition: all 0.2s;
+  }
+  .nav-bar a:hover { background: #f3f4f6; color: #1f1f1f; }
+  .nav-bar a.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+  .section { margin-bottom: 16px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+  }
+  .card-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .card-value { font-size: 22px; font-weight: 700; }
+  .card-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  .yellow { color: #d97706; }
+  .dim { color: #9ca3af; }
+  .mono { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #ffffff;
+  }
+  th {
+    background: #f9fafb;
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #4b5563;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+  }
+  td {
+    padding: 8px 8px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  tr:hover { background: #f9fafb; }
+  .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e0e0e0; }
+
+  .chart-container {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+  }
+  canvas { display: block; width: 100%; }
+
+  .split-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .split-grid { grid-template-columns: 1fr; } }
+
+  .bar-track { flex: 1; height: 22px; background: #f3f4f6; border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 6px; font-size: 10px; font-weight: 600; min-width: 2px; transition: width 0.4s; color: #fff; }
+
+  .footer { text-align: center; color: #9ca3af; font-size: 11px; margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .filter-bar select {
+    background: #ffffff; color: #1f1f1f; border: 1px solid #e0e0e0;
+    border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  .filter-bar select:hover { border-color: #3b82f6; }
+  .filter-bar label { font-size: 12px; color: #6b7280; }
+
+  .loading { text-align: center; padding: 60px 20px; }
+  .loading .spinner {
+    display: inline-block; width: 24px; height: 24px;
+    border: 2px solid #e5e7eb; border-top-color: #3b82f6;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg {
+    text-align: center; padding: 40px 20px; color: #dc2626;
+    background: #ffffff; border-radius: 8px; border: 1px solid #fca5a5;
+  }
+  .refresh-info { font-size: 11px; color: #9ca3af; }
+
+  .dir-long { color: #16a34a; font-weight: 600; }
+  .dir-short { color: #dc2626; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Trade Performance Analytics</h1>
+    <p>Hybrid V4 Paper Trading &mdash; Live Data</p>
+  </div>
+  <div class="header-right">
+    <span class="refresh-info" id="refreshInfo"></span>
+  </div>
+</div>
+
+<div class="nav-bar">
+  <a href="index.html">Main Dashboard</a>
+  <a href="dashboard.html">Advanced Dashboard</a>
+  <a href="trades.html" class="active">Trade Analytics</a>
+  <a href="signal-analytics.html">Signal Analytics</a>
+</div>
+
+<div class="filter-bar">
+  <label for="dateFilter">Period:</label>
+  <select id="dateFilter" onchange="applyFilter()">
+    <option value="all" selected>All Time</option>
+    <option value="24h">Last 24 Hours</option>
+    <option value="7d">Last 7 Days</option>
+    <option value="30d">Last 30 Days</option>
+  </select>
+</div>
+
+<div id="app">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p style="margin-top:12px;color:#6b7280;font-size:13px">Loading trades...</p>
+  </div>
+</div>
+
+<div class="footer" id="footer">
+  Trade Performance Analytics | Live data from API
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const REFRESH_INTERVAL = 120000; // 2 minutes
+let allTrades = [];
+let filteredTrades = [];
+let refreshTimer = null;
+let lastRefresh = null;
+let _mt5HistoryDeals = [];
+let _mt5Positions = null;
+let _mt5Currency = null;
+let _signalWeights = {};
+let _intradayModelTrades = [];
+let intradayViewMode = 'lines';
+let intradaySelectedDay = null;  // null = show all, index = highlight one day
+let _allPLTrades = [];
+
+// Signal name -> timeframe lookup (from paper_trading.yaml config)
+const SIGNAL_TIMEFRAMES = {
+  'BB_RSI_Volume_short':'M30','BB_RSI_long':'M30','EMA_RSI_long':'H4','EMA_RSI_short':'D1',
+  'MACD_Stoch_long':'H1','MACD_Stoch_short':'M30','MACD_cross_long':'M30',
+  'RSI_BB_confluence_long':'H4','RSI_BB_confluence_short':'M30','RSI_oversold_long':'H1',
+  'SMA20_200_BB_long':'H1','SMA20_200_RSI_Stoch_long':'H1','SMA20_200_RSI_Stoch_short':'M30',
+  'SMA20_200_RSI_long':'H1','SMA20_200_Stoch_BB_short':'H2','SMA20_200_Stoch_long':'H12',
+  'SMA20_200_Stoch_short':'H2','SMA20_50_BB_long':'H1','SMA20_50_BB_short':'H2',
+  'SMA20_50_MACD_long':'H8','SMA20_50_RSI_MACD_long':'H6','SMA20_50_RSI_Stoch_BB_short':'H2',
+  'SMA20_50_RSI_long':'H2','SMA20_50_Stoch_BB_short':'H2','SMA20_50_Stoch_long':'H8',
+  'SMA50_200_BB_short':'H1','SMA50_200_MACD_long':'H2','SMA50_200_RSI_Stoch_BB_long':'H1',
+  'SMA50_200_RSI_Stoch_BB_short':'H1','SMA50_200_RSI_Stoch_long':'H1','SMA50_200_RSI_Stoch_short':'H1',
+  'SMA50_200_Stoch_BB_short':'H1','SMA50_200_Stoch_long':'H4','SMA50_200_Stoch_short':'H6',
+  'SMA_20_50_cross_short':'H1','Stoch_RSI_long_15_25':'M30','Stoch_RSI_long_15_30':'H1',
+  'Stoch_RSI_long_15_35':'H6','Stoch_RSI_long_20_25':'M30','Stoch_RSI_long_20_30':'H1',
+  'Stoch_RSI_long_20_35':'H2','Stoch_RSI_long_25_25':'M30','Stoch_RSI_long_25_30':'H2',
+  'Stoch_RSI_long_25_35':'H4','Stoch_RSI_short_15_25':'H1','Stoch_RSI_short_15_30':'H2',
+  'Stoch_RSI_short_15_35':'H2','Stoch_RSI_short_20_25':'H1','Stoch_RSI_short_20_35':'H2',
+  'Stoch_RSI_short_20_30':'H2','Stoch_RSI_short_25_25':'H1','Stoch_RSI_short_25_30':'M30',
+  'Stoch_RSI_short_25_35':'H2','Triple_Momentum_long':'H1','Triple_Momentum_short':'M30',
+  'Stoch_K_oversold_long_25':'H3','Stoch_K_oversold_long_20':'H3','SMA20_50_MACD_short':'H4',
+  'SMA20_50_Stoch_short':'H3',
+};
+function getSignalTimeframe(entryModel, trade) {
+  // Prefer signal_timeframe stored in DB (accurate per-position)
+  if (trade && trade.signal_timeframe) return trade.signal_timeframe;
+  // Fallback to hardcoded lookup for old records
+  if (!entryModel) return '-';
+  const sig = entryModel.replace('Hybrid_V4 + ', '');
+  return SIGNAL_TIMEFRAMES[sig] || '-';
+}
+
+// ============================================================
+// DATA FETCHING
+// ============================================================
+async function fetchSignalWeights() {
+  try {
+    const resp = await fetch('/api/paper-trading/signal-weights', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) return;
+    const json = await resp.json();
+    _signalWeights = json.data || {};
+  } catch (e) { /* silent — column will show '-' */ }
+}
+
+function getTradeWeight(t) {
+  const key = `${t.symbol.toUpperCase()}:${t.direction.toUpperCase()}:${t.signal}`;
+  const entry = _signalWeights[key];
+  if (!entry) return { weight: 0.50, n: 0 };
+  return { weight: entry.weight, n: entry.wins + entry.losses };
+}
+
+async function fetchMT5Account() {
+  // TFG: No MT5 broker connection
+}
+
+async function fetchMT5HistoryDeals() {
+  // TFG: No MT5 broker connection
+}
+
+async function fetchMT5Positions() {
+  // TFG: No MT5 broker connection
+  return null;
+}
+
+function matchMT5Position(paperSymbol, paperDirection, paperTicket) {
+  if (!_mt5Positions || !paperSymbol) return null;
+  if (paperTicket) {
+    const byTicket = _mt5Positions.find(p => p.ticket === paperTicket);
+    if (byTicket) return byTicket;
+  }
+  const normalized = paperSymbol.toUpperCase();
+  const isLong = (paperDirection || '').toLowerCase() === 'long';
+  return _mt5Positions.find(p => {
+    const mt5Sym = (p.symbol || '').replace('.pro', '').toUpperCase();
+    return mt5Sym === normalized && (p.type === 0) === isLong;
+  });
+}
+
+async function loadOpenPositions() {
+  try {
+    const resp = await fetch('/api/paper-trading/positions');
+    if (!resp.ok) return [];
+    const json = await resp.json();
+    const JPY_SYMS = new Set(['USDJPY', 'EURJPY']);
+    return (json.data || []).map(p => {
+      const mt5 = matchMT5Position(p.symbol, p.direction, p.ticket);
+      const dir = (p.direction || '').toLowerCase();
+      const isJpy = JPY_SYMS.has((p.symbol || '').toUpperCase());
+      const pipMul = isJpy ? 100 : 10000;
+      const isLong = dir === 'long';
+      let pnlPips = p.pnl_pips || 0;
+      let mt5Profit = null, mt5Swap = null, currentPrice = null;
+      if (mt5) {
+        pnlPips = isLong
+          ? (mt5.price_current - mt5.price_open) * pipMul
+          : (mt5.price_open - mt5.price_current) * pipMul;
+        pnlPips = Math.round(pnlPips * 10) / 10;
+        mt5Profit = mt5.profit;
+        mt5Swap = mt5.swap || 0;
+        currentPrice = mt5.price_current;
+      }
+      return {
+        id: p.id || `open-${p.symbol}-${dir}`,
+        symbol: p.symbol,
+        direction: dir,
+        entry_time: p.opened_at,
+        exit_time: null,
+        entry_price: mt5 ? mt5.price_open : p.entry_price,
+        exit_price: currentPrice,
+        sl_price: p.sl_price,
+        tp_price: p.tp_price,
+        size: mt5 ? mt5.volume : p.size,
+        pnl_pips: pnlPips,
+        exit_reason: 'open',
+        entry_model: p.entry_model,
+        mt5_profit: mt5Profit,
+        mt5_swap: mt5Swap,
+        isOpen: true,
+        signal_timeframe: p.signal_timeframe,
+      };
+    });
+  } catch (e) {
+    console.warn('Failed to load open positions:', e.message);
+    return [];
+  }
+}
+
+function matchMT5Deal(trade) {
+  if (!_mt5HistoryDeals.length || !trade.symbol) return null;
+  const sym = trade.symbol.toUpperCase();
+  const dir = (trade.direction || '').toLowerCase();
+  const entryTime = new Date(trade.entry_time || trade.opened_at).getTime() / 1000;
+  let best = null, bestDiff = Infinity;
+  for (const deal of _mt5HistoryDeals) {
+    if (deal.symbol !== sym || deal.direction !== dir || !deal.is_closed) continue;
+    const diff = Math.abs(deal.entry_time_utc - entryTime);
+    if (diff < 120 && diff < bestDiff) { bestDiff = diff; best = deal; }
+  }
+  return best;
+}
+
+async function loadTrades() {
+  const resp = await fetch('/api/paper-trading/trades?limit=1000');
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+  const json = await resp.json();
+  return json.data.map(t => ({
+    id: t.id,
+    symbol: t.symbol,
+    direction: t.direction.toLowerCase(),
+    entry_time: t.opened_at,
+    exit_time: t.closed_at,
+    entry_price: t.entry_price,
+    exit_price: t.exit_price,
+    sl_price: t.sl_price,
+    tp_price: t.tp_price,
+    size: t.size,
+    pnl_pips: t.pnl_pips,
+    exit_reason: t.exit_reason.toLowerCase(),
+    entry_model: t.entry_model,
+    signal_timeframe: t.signal_timeframe,
+  }));
+}
+
+async function refreshData() {
+  try {
+    await Promise.all([fetchMT5Account(), fetchMT5HistoryDeals(), fetchMT5Positions(), fetchSignalWeights()]);
+    const closedTrades = await loadTrades();
+    const openPositions = await loadOpenPositions();
+    // Enrich closed trades with MT5 profit data
+    const matchedPositionIds = new Set();
+    allTrades = closedTrades.map(t => {
+      const deal = matchMT5Deal(t);
+      if (deal) matchedPositionIds.add(deal.position_id);
+      return { ...t, mt5_profit: deal ? deal.profit : null, mt5_swap: deal ? deal.swap : null, isOpen: false };
+    });
+    // Merge open positions
+    allTrades = [...allTrades, ...openPositions];
+    // Add pre-model test trades from MT5 history (before first paper trade)
+    const closedEntryTimes = allTrades.filter(t => !t.isOpen).map(t => new Date(t.entry_time).getTime() / 1000);
+    if (_mt5HistoryDeals.length && closedEntryTimes.length) {
+      const firstPaperEntryUtc = Math.min(...closedEntryTimes);
+      const JPY_SYMS = new Set(['USDJPY', 'EURJPY']);
+      const testDeals = _mt5HistoryDeals.filter(d =>
+        d.is_closed && !matchedPositionIds.has(d.position_id) && d.entry_time_utc < firstPaperEntryUtc
+      );
+      const testTrades = testDeals.map(d => {
+        let pips = 0;
+        if (d.entry_price && d.exit_price) {
+          const mult = JPY_SYMS.has(d.symbol) ? 100 : 10000;
+          pips = (d.exit_price - d.entry_price) * mult * (d.direction === 'long' ? 1 : -1);
+        }
+        return {
+          id: `mt5-${d.position_id}`, symbol: d.symbol, direction: d.direction,
+          entry_time: new Date(d.entry_time_utc * 1000).toISOString(),
+          exit_time: new Date((d.exit_time_utc || d.entry_time_utc) * 1000).toISOString(),
+          entry_price: d.entry_price, exit_price: d.exit_price,
+          size: d.volume, pnl_pips: pips,
+          mt5_profit: d.profit, mt5_swap: d.swap,
+          exit_reason: 'test_trade', entry_model: 'Manual Test', isTest: true, isOpen: false,
+        };
+      });
+      if (testTrades.length) allTrades = [...testTrades, ...allTrades];
+    }
+    lastRefresh = new Date();
+    applyFilter();
+  } catch (err) {
+    document.getElementById('app').innerHTML = `
+      <div class="error-msg">
+        <h3>Failed to load trades</h3>
+        <p style="margin-top:8px">${err.message}</p>
+        <p style="margin-top:12px;color:#6b7280;font-size:12px">Retrying in ${REFRESH_INTERVAL/1000}s...</p>
+      </div>`;
+  }
+  updateRefreshInfo();
+}
+
+function updateRefreshInfo() {
+  const el = document.getElementById('refreshInfo');
+  if (lastRefresh) {
+    el.textContent = `Last: ${lastRefresh.toLocaleTimeString()} | Auto: ${REFRESH_INTERVAL/1000}s`;
+  }
+}
+
+// ============================================================
+// FILTERING
+// ============================================================
+function applyFilter() {
+  const filter = document.getElementById('dateFilter').value;
+  const now = new Date();
+  let cutoff = null;
+
+  if (filter === '24h') cutoff = new Date(now - 24*60*60*1000);
+  else if (filter === '7d') cutoff = new Date(now - 7*24*60*60*1000);
+  else if (filter === '30d') cutoff = new Date(now - 30*24*60*60*1000);
+
+  if (cutoff) {
+    filteredTrades = allTrades.filter(t => new Date(t.entry_time) >= cutoff);
+  } else {
+    filteredTrades = [...allTrades];
+  }
+
+  renderApp();
+}
+
+// ============================================================
+// PROCESSING
+// ============================================================
+function parseSignal(entry_model) {
+  if (!entry_model) return 'Unknown';
+  return entry_model.replace('Hybrid_V4 + ', '');
+}
+
+function calcStats(arr) {
+  if (!arr.length) return { count: 0, wins: 0, losses: 0, wr: 0, pf: 0, totalPips: 0, avgPips: 0, totalMt5: 0, mt5Count: 0 };
+  const wins = arr.filter(t => t.pnl_pips > 0);
+  const losses = arr.filter(t => t.pnl_pips <= 0);
+  const winPips = wins.reduce((s, t) => s + t.pnl_pips, 0);
+  const lossPips = Math.abs(losses.reduce((s, t) => s + t.pnl_pips, 0));
+  const totalPips = arr.reduce((s, t) => s + t.pnl_pips, 0);
+  const mt5Trades = arr.filter(t => t.mt5_profit != null);
+  const totalMt5 = mt5Trades.reduce((s, t) => s + t.mt5_profit + (t.mt5_swap || 0), 0);
+  return {
+    count: arr.length,
+    wins: wins.length,
+    losses: losses.length,
+    wr: arr.length ? (wins.length / arr.length * 100) : 0,
+    pf: lossPips > 0 ? winPips / lossPips : winPips > 0 ? 999 : 0,
+    totalPips,
+    avgPips: totalPips / arr.length,
+    totalMt5,
+    mt5Count: mt5Trades.length,
+  };
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function fmt(n, d = 1) { return n.toFixed(d); }
+function fmtPips(n) {
+  const s = n >= 0 ? '+' + n.toFixed(1) : n.toFixed(1);
+  return `<span class="${n >= 0 ? 'green' : 'red'}">${s}</span>`;
+}
+function fmtPF(n) {
+  if (n >= 999) return '<span class="green">INF</span>';
+  const cls = n >= 1.5 ? 'green' : n >= 1.0 ? 'yellow' : 'red';
+  return `<span class="${cls}">${n.toFixed(2)}</span>`;
+}
+function fmtWR(n) {
+  const cls = n >= 56.7 ? 'green' : n >= 50 ? 'yellow' : 'red';
+  return `<span class="${cls}">${n.toFixed(1)}%</span>`;
+}
+
+function renderApp() {
+  const trades = filteredTrades.map(t => ({
+    ...t,
+    signal: parseSignal(t.entry_model),
+    entryDate: new Date(t.entry_time),
+    exitDate: t.exit_time ? new Date(t.exit_time) : null,
+    isWin: t.pnl_pips > 0,
+  })).sort((a, b) => a.entryDate - b.entryDate);
+
+  if (!trades.length) {
+    document.getElementById('app').innerHTML = `
+      <div class="card" style="text-align:center;padding:40px">
+        <p style="color:#6b7280">No trades found for selected period.</p>
+      </div>`;
+    return;
+  }
+
+  const modelTrades = trades.filter(t => !t.isTest);
+  _intradayModelTrades = modelTrades;
+  const openCount = modelTrades.filter(t => t.isOpen).length;
+  const closedCount = modelTrades.filter(t => !t.isOpen).length;
+  const allStats = calcStats(modelTrades);
+
+  // Unique signals/symbols for intraday chart filters
+  const uniqueSignals = [...new Set(modelTrades.map(t => t.signal))].sort();
+  const uniqueSymbols = [...new Set(modelTrades.map(t => t.symbol))].sort();
+
+  // Signal performance
+  const signalMap = {};
+  modelTrades.forEach(t => {
+    if (!signalMap[t.signal]) signalMap[t.signal] = [];
+    signalMap[t.signal].push(t);
+  });
+  const signalPerf = Object.entries(signalMap).map(([sig, arr]) => ({
+    signal: sig, trades: arr, stats: calcStats(arr),
+    symbols: [...new Set(arr.map(t => t.symbol))],
+  })).sort((a, b) => b.stats.count - a.stats.count);
+
+  // Per-symbol
+  const symbolMap = {};
+  modelTrades.forEach(t => {
+    if (!symbolMap[t.symbol]) symbolMap[t.symbol] = [];
+    symbolMap[t.symbol].push(t);
+  });
+  const symbolPerf = Object.entries(symbolMap).map(([sym, arr]) => ({
+    symbol: sym, stats: calcStats(arr),
+  })).sort((a, b) => b.stats.count - a.stats.count);
+
+  // Exit reasons
+  const exitMap = {};
+  modelTrades.forEach(t => {
+    if (!exitMap[t.exit_reason]) exitMap[t.exit_reason] = [];
+    exitMap[t.exit_reason].push(t);
+  });
+  const exitPerf = Object.entries(exitMap).map(([reason, arr]) => ({
+    reason, stats: calcStats(arr),
+  })).sort((a, b) => b.stats.count - a.stats.count);
+
+  // Lot size analysis
+  const lotSizes = modelTrades.filter(t => t.size != null).map(t => t.size);
+  const lotStats = lotSizes.length ? {
+    avg: lotSizes.reduce((a,b) => a+b, 0) / lotSizes.length,
+    min: Math.min(...lotSizes),
+    max: Math.max(...lotSizes),
+    count: lotSizes.length,
+  } : { avg: 0, min: 0, max: 0, count: 0 };
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    ${renderSummary(allStats, openCount, closedCount)}
+    ${renderSignalTable(signalPerf, trades)}
+    <div class="section">
+      <h2>Cumulative P/L Timeline</h2>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px">
+        <label style="color:#6b7280">Range:</label>
+        <select id="plRangeFilter" onchange="redrawPLCharts()" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:4px 8px;font-size:11px;font-family:Consolas,Monaco,monospace;cursor:pointer">
+          <option value="7">Last 7d</option>
+          <option value="14">Last 14d</option>
+          <option value="30" selected>Last 30d</option>
+          <option value="60">Last 60d</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+      <div class="chart-container">
+        <canvas id="plChart" height="300"></canvas>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Daily P/L <span style="font-size:13px;color:#9ca3af;font-weight:400">(by close date)</span></h2>
+      <div class="chart-container">
+        <canvas id="monthlyDayChart" height="300"></canvas>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Intraday P/L by Hour</h2>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;flex-wrap:wrap">
+        <label style="color:#6b7280">Signal:</label>
+        <select id="intradaySignalFilter" onchange="redrawIntradayChart()" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:4px 8px;font-size:11px;font-family:Consolas,Monaco,monospace;cursor:pointer">
+          <option value="all">All Signals</option>
+          ${uniqueSignals.map(s => '<option value="' + s + '">' + s + '</option>').join('')}
+        </select>
+        <label style="color:#6b7280">Symbol:</label>
+        <select id="intradaySymbolFilter" onchange="redrawIntradayChart()" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:4px 8px;font-size:11px;font-family:Consolas,Monaco,monospace;cursor:pointer">
+          <option value="all">All Symbols</option>
+          ${uniqueSymbols.map(s => '<option value="' + s + '">' + s + '</option>').join('')}
+        </select>
+        <label style="color:#6b7280">Direction:</label>
+        <select id="intradayDirFilter" onchange="redrawIntradayChart()" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:4px 8px;font-size:11px;font-family:Consolas,Monaco,monospace;cursor:pointer">
+          <option value="all">All</option>
+          <option value="long">Long</option>
+          <option value="short">Short</option>
+        </select>
+        <label style="color:#6b7280">Range:</label>
+        <select id="intradayRangeFilter" onchange="redrawIntradayChart()" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:4px 8px;font-size:11px;font-family:Consolas,Monaco,monospace;cursor:pointer">
+          <option value="7">Last 7d</option>
+          <option value="14" selected>Last 14d</option>
+          <option value="30">Last 30d</option>
+          <option value="all">All</option>
+        </select>
+        <button id="intradayToggleBtn" onclick="toggleIntradayView()" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:4px 12px;font-size:11px;font-family:Consolas,Monaco,monospace;cursor:pointer">Heatmap</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="intradayChart" height="350"></canvas>
+      </div>
+      <div id="intradayLegend" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px 8px;padding:6px 0 0;font-size:10px"></div>
+      <div id="intradayHourlySummary"></div>
+      <div id="intradaySessionSummary"></div>
+    </div>
+    ${renderSessionAttribution(modelTrades)}
+    ${renderSymbolBreakdown(symbolPerf)}
+    ${renderExitAnalysis(exitPerf, trades)}
+    ${renderLotAnalysis(lotStats)}
+    <div class="section">
+      <h2>Signal Weight Timeline (Kelly W)</h2>
+      <div class="chart-container">
+        <canvas id="weightChart" height="300"></canvas>
+      </div>
+      <div id="weightLegend" style="display:flex;flex-wrap:wrap;gap:4px 14px;padding:8px 0 0;font-size:11px"></div>
+    </div>
+    ${renderTradeLog(trades)}
+  `;
+  _allPLTrades = trades;
+  redrawPLCharts();
+  drawWeightChart(trades);
+  drawIntradayChart();
+
+  // Update footer
+  document.getElementById('footer').textContent =
+    `${closedCount} closed + ${openCount} open | Last updated: ${lastRefresh ? lastRefresh.toLocaleTimeString() : '-'}`;
+}
+
+function redrawPLCharts() {
+  const range = document.getElementById('plRangeFilter')?.value || '30';
+  let trades = _allPLTrades;
+  if (range !== 'all') {
+    const days = parseInt(range);
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    cutoff.setUTCHours(0, 0, 0, 0);
+    trades = trades.filter(t => {
+      const d = t.isOpen ? new Date() : (t.exitDate || t.entryDate);
+      return d >= cutoff;
+    });
+  }
+  drawPLChart(trades);
+  drawMonthlyDayChart();
+}
+
+function renderSummary(stats, openCount, closedCount) {
+  function card(label, value, cls, sub) {
+    return `<div class="card">
+      <div class="card-label">${label}</div>
+      <div class="card-value ${cls || ''}">${value}</div>
+      ${sub ? `<div class="card-sub">${sub}</div>` : ''}
+    </div>`;
+  }
+
+  const openSub = openCount > 0
+    ? `${closedCount} closed + ${openCount} open`
+    : `${stats.wins}W / ${stats.losses}L`;
+  const pipsSub = openCount > 0 ? 'incl. unrealized from open' : '';
+
+  return `<div class="section">
+    <h2>Overall Summary</h2>
+    <div class="cards">
+      ${card('Total Trades', stats.count, '', openSub)}
+      ${card('Win Rate', fmt(stats.wr, 1) + '%', stats.wr >= 56.7 ? 'green' : stats.wr >= 50 ? 'yellow' : 'red', 'Breakeven: 56.7%')}
+      ${card('Total Pips', (stats.totalPips >= 0 ? '+' : '') + fmt(stats.totalPips, 1), stats.totalPips >= 0 ? 'green' : 'red', pipsSub)}
+      ${card('MT5 P/L', stats.mt5Count > 0 ? (stats.totalMt5 >= 0 ? '+' : '') + fmt(stats.totalMt5, 1) + ' ' + (_mt5Currency || 'PLN') : '-', stats.totalMt5 >= 0 ? 'green' : 'red', stats.mt5Count > 0 ? stats.mt5Count + '/' + stats.count + ' matched' : 'No MT5 data')}
+      ${card('Avg P/L', (stats.avgPips >= 0 ? '+' : '') + fmt(stats.avgPips, 2) + ' pips', stats.avgPips >= 0 ? 'green' : 'red')}
+      ${card('Profit Factor', stats.pf >= 999 ? 'INF' : fmt(stats.pf, 2), stats.pf >= 1.5 ? 'green' : stats.pf >= 1.0 ? 'yellow' : 'red')}
+    </div>
+  </div>`;
+}
+
+function renderSignalTable(signalPerf, trades) {
+  const rows = signalPerf.map(s => {
+    const st = s.stats;
+    // Last 5 closed trades for this signal
+    const last5 = [...s.trades].sort((a, b) => b.entryDate - a.entryDate).slice(0, 5);
+    const last5Html = last5.map(t => {
+      const cls = t.pnl_pips >= 0 ? 'green' : 'red';
+      const dt = t.entryDate.toLocaleString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+      const openTag = t.isOpen ? ' [OPEN]' : '';
+      return `<span class="${cls}" title="${t.symbol} ${t.direction.toUpperCase()} | ${dt}${openTag}">${t.isOpen ? '~' : ''}${t.pnl_pips >= 0 ? '+' : ''}${t.pnl_pips.toFixed(1)}</span>`;
+    }).join(' ');
+    const mt5Str = st.mt5Count > 0
+      ? `<span class="${st.totalMt5 >= 0 ? 'green' : 'red'}">${st.totalMt5 >= 0 ? '+' : ''}${st.totalMt5.toFixed(1)}</span>`
+      : '<span class="dim">-</span>';
+    return `<tr>
+      <td>${s.signal}</td>
+      <td>${s.symbols.join(', ')}</td>
+      <td style="text-align:right">${st.count}</td>
+      <td style="text-align:right">${fmtWR(st.wr)}</td>
+      <td style="text-align:right">${fmtPF(st.pf)}</td>
+      <td style="text-align:right">${fmtPips(st.avgPips)}</td>
+      <td style="text-align:right">${fmtPips(st.totalPips)}</td>
+      <td style="text-align:right">${mt5Str}</td>
+      <td style="text-align:right"><span class="green">${st.wins}</span>/<span class="red">${st.losses}</span></td>
+      <td style="font-size:11px;white-space:nowrap">${last5Html}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="section">
+    <h2>Signal Performance</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Signal</th><th>Symbol(s)</th>
+            <th style="text-align:right">Trades</th><th style="text-align:right">Win Rate</th>
+            <th style="text-align:right">PF</th><th style="text-align:right">Avg Pips</th>
+            <th style="text-align:right">Total Pips</th><th style="text-align:right">PLN</th><th style="text-align:right">W/L</th>
+            <th>Last 5 Closed</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderSymbolBreakdown(symbolPerf) {
+  const maxTrades = Math.max(...symbolPerf.map(s => s.stats.count));
+  const maxPips = Math.max(...symbolPerf.map(s => Math.abs(s.stats.totalPips)));
+
+  const bars = symbolPerf.map(s => {
+    const st = s.stats;
+    const pctTrades = (st.count / maxTrades * 100);
+    const pctPips = maxPips > 0 ? (Math.abs(st.totalPips) / maxPips * 100) : 0;
+    const pipsColor = st.totalPips >= 0 ? '#16a34a' : '#dc2626';
+    return `
+      <div style="display:grid;grid-template-columns:80px 1fr 1fr 200px;gap:8px;align-items:center;margin-bottom:6px;">
+        <div class="mono" style="text-align:right;font-weight:600;font-size:12px">${s.symbol}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pctTrades}%;background:#3b82f6">${st.count} trades</div>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pctPips}%;background:${pipsColor}">${st.totalPips >= 0 ? '+' : ''}${fmt(st.totalPips)} pips</div>
+        </div>
+        <div class="mono" style="font-size:11px;color:#4b5563">
+          WR: ${fmtWR(st.wr)} | PF: ${fmtPF(st.pf)}${st.mt5Count > 0 ? ` | <span class="${st.totalMt5 >= 0 ? 'green' : 'red'}">${st.totalMt5 >= 0 ? '+' : ''}${st.totalMt5.toFixed(0)} PLN</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  return `<div class="section">
+    <h2>Per-Symbol Breakdown</h2>
+    <div class="card">${bars}</div>
+  </div>`;
+}
+
+function renderExitAnalysis(exitPerf, trades) {
+  const rows = exitPerf.map(e => {
+    const st = e.stats;
+    return `<tr>
+      <td>${e.reason}</td>
+      <td style="text-align:right">${st.count}</td>
+      <td style="text-align:right">${(st.count / trades.length * 100).toFixed(1)}%</td>
+      <td style="text-align:right">${fmtWR(st.wr)}</td>
+      <td style="text-align:right">${fmtPips(st.avgPips)}</td>
+      <td style="text-align:right">${fmtPips(st.totalPips)}</td>
+      <td style="text-align:right"><span class="green">${st.wins}</span>/<span class="red">${st.losses}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="section">
+    <h2>Exit Reason Analysis</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Exit Reason</th><th style="text-align:right">Count</th><th style="text-align:right">Share</th>
+            <th style="text-align:right">Win Rate</th><th style="text-align:right">Avg Pips</th>
+            <th style="text-align:right">Total Pips</th><th style="text-align:right">W/L</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderLotAnalysis(lotStats) {
+  return `<div class="section">
+    <h2>Lot Size Analysis</h2>
+    <div class="card">
+      <div style="font-size:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+        <div>Trades: <strong>${lotStats.count}</strong></div>
+        <div>Avg lot: <strong>${lotStats.avg.toFixed(2)}</strong></div>
+        <div>Min lot: <strong>${lotStats.min.toFixed(2)}</strong></div>
+        <div>Max lot: <strong>${lotStats.max.toFixed(2)}</strong> ${lotStats.max >= 1.0 ? '<span class="badge badge-yellow">HIGH</span>' : ''}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTradeLog(trades) {
+  const sorted = [...trades].sort((a, b) => b.entryDate - a.entryDate);
+  const rows = sorted.slice(0, 50).map(t => {
+    const pipsClass = t.pnl_pips >= 0 ? 'green' : 'red';
+    const dirClass = t.direction === 'long' ? 'dir-long' : 'dir-short';
+    const entryTime = new Date(t.entry_time).toLocaleString('en-GB', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+    const exitTime = t.exit_time
+      ? new Date(t.exit_time).toLocaleString('en-GB', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})
+      : '<span class="badge badge-blue">OPEN</span>';
+    const mt5Total = t.mt5_profit != null ? t.mt5_profit + (t.mt5_swap || 0) : null;
+    const mt5Str = mt5Total != null
+      ? `<span class="${mt5Total >= 0 ? 'green' : 'red'}">${mt5Total >= 0 ? '+' : ''}${mt5Total.toFixed(1)}</span>`
+      : '<span class="dim">-</span>';
+    const { weight: w, n: wN } = getTradeWeight(t);
+    const wStr = w != null ? `${w.toFixed(2)} <span style="color:#6b7280;font-size:10px">(${wN})</span>` : '-';
+    const wColor = w == null ? '#9ca3af' : w >= 1.0 ? '#6b7280' : w >= 0.2 ? '#22c55e' : w >= 0.15 ? '#eab308' : '#ef4444';
+    const openStyle = t.isOpen ? ' style="background:#eff6ff"' : (t.isTest ? ' style="background:#fef2f2;color:#9ca3af"' : '');
+    const pipsPrefix = t.isOpen ? '~' : '';
+    const exitReasonLabel = t.isOpen ? '<span class="badge badge-blue">OPEN</span>' : t.exit_reason;
+    return `<tr${openStyle}>
+      <td>${t.isTest ? 'TEST' : t.id}</td>
+      <td>${t.symbol}</td>
+      <td><span class="${dirClass}">${t.direction.toUpperCase()}</span></td>
+      <td>${t.isTest ? 'Manual Test' : t.signal}</td>
+      <td style="font-weight:600;color:#4b5563">${getSignalTimeframe(t.entry_model, t)}</td>
+      <td style="text-align:right;color:${wColor}">${wStr}</td>
+      <td style="text-align:right">${t.size != null ? t.size.toFixed(2) : '-'}</td>
+      <td style="text-align:right">${t.entry_price}</td>
+      <td style="text-align:right">${t.exit_price || '-'}</td>
+      <td style="text-align:right"><span class="${pipsClass}">${pipsPrefix}${t.pnl_pips >= 0 ? '+' : ''}${t.pnl_pips.toFixed(1)}</span></td>
+      <td style="text-align:right">${mt5Str}</td>
+      <td>${exitReasonLabel}</td>
+      <td>${entryTime}</td>
+      <td>${exitTime}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="section">
+    <h2>Recent Trades (Last 50)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Symbol</th><th>Dir</th><th>Signal</th><th>TF</th>
+            <th style="text-align:right">W</th><th style="text-align:right">Lots</th>
+            <th style="text-align:right">Entry</th><th style="text-align:right">Exit</th>
+            <th style="text-align:right">Pips</th><th style="text-align:right">PLN</th><th>Exit Reason</th>
+            <th>Opened</th><th>Closed</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// CHART - Cumulative P/L (Pips + PLN dual axis)
+// ============================================================
+function drawPLChart(trades) {
+  const canvas = document.getElementById('plChart');
+  if (!canvas || !trades || !trades.length) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 32;
+  const H = 300;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  // Build cumulative data: closed trades by exit_time (realized P/L timeline),
+  // then open positions appended at end (unrealized, at current time)
+  const closed = trades.filter(t => !t.isOpen && t.exitDate);
+  const open = trades.filter(t => t.isOpen);
+  closed.sort((a, b) => a.exitDate - b.exitDate);
+  const sorted = [...closed, ...open];
+  let cumPips = 0, cumPln = 0;
+  const hasPln = sorted.some(t => t.mt5_profit != null);
+  const sigStats = {}; // running W/L per signal
+  const points = sorted.map(t => {
+    cumPips += t.pnl_pips;
+    const mt5Total = t.mt5_profit != null ? t.mt5_profit + (t.mt5_swap || 0) : 0;
+    cumPln += mt5Total;
+    const sig = t.signal || parseSignal(t.entry_model);
+    if (!sigStats[sig]) sigStats[sig] = { w: 0, l: 0, pips: 0 };
+    const isWin = t.mt5_profit != null ? mt5Total > 0 : t.pnl_pips > 0;
+    sigStats[sig][isWin ? 'w' : 'l']++;
+    sigStats[sig].pips += t.pnl_pips;
+    // Closed trades plot at exit time (when P/L realized), open at current time
+    const plotDate = t.isOpen ? new Date() : (t.exitDate || t.entryDate);
+    return { date: plotDate, entryDate: t.entryDate, cumPips, cumPln, pips: t.pnl_pips, hasMt5: t.mt5_profit != null,
+             symbol: t.symbol, direction: t.direction, signal: sig,
+             exit_reason: t.exit_reason, size: t.size, mt5Pnl: mt5Total,
+             tf: getSignalTimeframe(t.entry_model, t), isTest: !!t.isTest, isOpen: !!t.isOpen,
+             sigW: sigStats[sig].w, sigL: sigStats[sig].l, sigPips: sigStats[sig].pips };
+  });
+
+  const minDate = points[0].date.getTime();
+  const maxDate = points[points.length - 1].date.getTime();
+
+  // Pips axis (left)
+  const minPips = Math.min(0, ...points.map(p => p.cumPips));
+  const maxPips = Math.max(0, ...points.map(p => p.cumPips));
+  const rangePips = maxPips - minPips || 1;
+
+  // PLN axis (right)
+  const minPln = Math.min(0, ...points.map(p => p.cumPln));
+  const maxPln = Math.max(0, ...points.map(p => p.cumPln));
+  const rangePln = maxPln - minPln || 1;
+
+  const pad = { top: 24, right: hasPln ? 70 : 20, bottom: 44, left: 60 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  // Index-based x: each trade gets equal spacing (no weekend gaps)
+  const _n = points.length;
+  function xIdx(i) { return pad.left + (i / (_n - 1 || 1)) * cw; }
+  function xDate(d) { // for arbitrary dates (Kelly lines): interpolate between nearest trades
+    const t = d.getTime();
+    if (_n < 2 || t <= points[0].date.getTime()) return xIdx(0);
+    if (t >= points[_n-1].date.getTime()) return xIdx(_n-1);
+    for (let j = 0; j < _n - 1; j++) {
+      const t0 = points[j].date.getTime(), t1 = points[j+1].date.getTime();
+      if (t >= t0 && t <= t1) return xIdx(j + (t - t0) / (t1 - t0 || 1));
+    }
+    return xIdx(_n - 1);
+  }
+  function yPips(v) { return pad.top + ch - ((v - minPips) / rangePips * ch); }
+  function yPln(v) { return pad.top + ch - ((v - minPln) / rangePln * ch); }
+
+  // Grid (based on pips axis)
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 1;
+  const gridLines = 5;
+  for (let i = 0; i <= gridLines; i++) {
+    const v = minPips + (rangePips / gridLines) * i;
+    const y = yPips(v);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    // Left axis labels (pips)
+    ctx.fillStyle = '#3b82f6';
+    ctx.font = '11px Consolas, Monaco, Courier New, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(0), pad.left - 8, y + 4);
+  }
+
+  // Right axis labels (PLN)
+  if (hasPln) {
+    for (let i = 0; i <= gridLines; i++) {
+      const v = minPln + (rangePln / gridLines) * i;
+      const y = yPln(v);
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = '11px Consolas, Monaco, Courier New, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(v.toFixed(0), W - pad.right + 8, y + 4);
+    }
+  }
+
+  // Zero lines — pips (blue dashed) and PLN (amber dashed)
+  const zeroY = yPips(0);
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(pad.left, zeroY);
+  ctx.lineTo(W - pad.right, zeroY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (hasPln) {
+    const zeroPlnY = yPln(0);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, zeroPlnY);
+    ctx.lineTo(W - pad.right, zeroPlnY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Pips line (blue)
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(xIdx(0), yPips(0));
+  points.forEach((p, i) => ctx.lineTo(xIdx(i), yPips(p.cumPips)));
+  ctx.stroke();
+
+  // Fill under pips
+  ctx.beginPath();
+  ctx.moveTo(xIdx(0), yPips(0));
+  points.forEach((p, i) => ctx.lineTo(xIdx(i), yPips(p.cumPips)));
+  ctx.lineTo(xIdx(_n - 1), yPips(0));
+  ctx.closePath();
+  const lastPips = points[points.length - 1].cumPips;
+  const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+  if (lastPips >= 0) {
+    grad.addColorStop(0, 'rgba(59,130,246,0.10)');
+    grad.addColorStop(1, 'rgba(59,130,246,0.02)');
+  } else {
+    grad.addColorStop(0, 'rgba(59,130,246,0.02)');
+    grad.addColorStop(1, 'rgba(59,130,246,0.10)');
+  }
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // PLN line (orange)
+  if (hasPln) {
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(xIdx(0), yPln(0));
+    points.forEach((p, i) => ctx.lineTo(xIdx(i), yPln(p.cumPln)));
+    ctx.stroke();
+  }
+
+  // Weekend bands — forex market closed Fri 22:00 UTC → Sun 22:00 UTC
+  const firstT = points[0].date.getTime(), lastT = points[_n-1].date.getTime();
+  { // find first Friday on or after first trade
+    const fri = new Date(firstT);
+    fri.setUTCHours(22, 0, 0, 0);
+    while (fri.getUTCDay() !== 5) fri.setUTCDate(fri.getUTCDate() + 1);
+    while (fri.getTime() < lastT) {
+      const sunOpen = new Date(fri); sunOpen.setUTCDate(sunOpen.getUTCDate() + 2); // Sun 22:00
+      const x0 = xDate(fri), x1 = xDate(sunOpen);
+      if (x1 - x0 > 2) { // only draw if visible
+        ctx.fillStyle = 'rgba(156, 163, 175, 0.22)';
+        ctx.fillRect(x0, pad.top, x1 - x0, ch);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '9px Consolas, Monaco, Courier New, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('wknd', (x0 + x1) / 2, pad.top + ch / 2);
+      }
+      fri.setUTCDate(fri.getUTCDate() + 7); // next Friday
+    }
+  }
+
+  // Day separator lines — dotted vertical lines at day boundaries
+  for (let i = 1; i < points.length; i++) {
+    const pd = points[i-1].date, cd = points[i].date;
+    const prevDay = pd.getFullYear() + '-' + String(pd.getMonth()+1).padStart(2,'0') + '-' + String(pd.getDate()).padStart(2,'0');
+    const currDay = cd.getFullYear() + '-' + String(cd.getMonth()+1).padStart(2,'0') + '-' + String(cd.getDate()).padStart(2,'0');
+    if (prevDay !== currDay) {
+      const bx = (xIdx(i-1) + xIdx(i)) / 2;
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(bx, pad.top);
+      ctx.lineTo(bx, H - pad.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Test trades zone — red shading + boundary line
+  const lastTestIdx = points.reduce((acc, p, i) => p.isTest ? i : acc, -1);
+  if (lastTestIdx >= 0) {
+    const bx = lastTestIdx < _n - 1 ? (xIdx(lastTestIdx) + xIdx(lastTestIdx + 1)) / 2 : xIdx(lastTestIdx) + 4;
+    // Light red background for test zone
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+    ctx.fillRect(pad.left, pad.top, bx - pad.left, ch);
+    // Boundary line
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(bx, pad.top);
+    ctx.lineTo(bx, H - pad.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '10px Consolas, Monaco, Courier New, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tests', (pad.left + bx) / 2, pad.top - 4);
+  }
+
+  // Kelly sizing deployment line (purple dashed)
+  const kellyDeployDate = new Date('2026-02-19T17:27:00Z');
+  const kellyV3DeployDate = new Date('2026-02-22T21:40:00Z');
+  if (kellyDeployDate.getTime() >= minDate && kellyDeployDate.getTime() <= maxDate) {
+    const kx = xDate(kellyDeployDate);
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(kx, pad.top);
+    ctx.lineTo(kx, H - pad.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#a855f7';
+    ctx.font = '10px Consolas, Monaco, Courier New, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Kelly sizing', kx, pad.top - 4);
+  }
+
+  // Kelly-v3 sizing deployment line (teal dashed)
+  if (kellyV3DeployDate.getTime() >= minDate && kellyV3DeployDate.getTime() <= maxDate) {
+    const kv3x = xDate(kellyV3DeployDate);
+    ctx.strokeStyle = '#14b8a6';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(kv3x, pad.top);
+    ctx.lineTo(kv3x, H - pad.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#14b8a6';
+    ctx.font = '10px Consolas, Monaco, Courier New, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Kelly-v3 sizing', kv3x, pad.top - 4);
+  }
+
+  // Dots (pips) — store pixel coords for hover
+  const dotCoords = [];
+  points.forEach((p, i) => {
+    const cx = xIdx(i), cy = yPips(p.cumPips);
+    if (p.isTest) {
+      // Test trades: red outlined triangle
+      ctx.strokeStyle = '#ef4444'; ctx.fillStyle = '#fecaca'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 4); ctx.lineTo(cx - 3.5, cy + 3); ctx.lineTo(cx + 3.5, cy + 3);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (p.isOpen) {
+      // Open positions: blue ring (unfilled)
+      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.pips >= 0 ? '#16a34a' : '#dc2626';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    dotCoords.push({ x: cx, y: cy, i });
+  });
+  // Store for hover handler + daily chart alignment
+  canvas._plChartData = { points, dotCoords, xIdx, xDate, yPips, yPln, pad, W, H, hasPln, dpr, _n, cw };
+
+  // Date labels
+  ctx.fillStyle = '#6b7280';
+  ctx.font = '10px Consolas, Monaco, Courier New, monospace';
+  ctx.textAlign = 'center';
+  const numLabels = Math.min(10, _n);
+  if (numLabels > 1) {
+    const shown = new Set();
+    for (let li = 0; li < numLabels; li++) {
+      const idx = Math.round(li * (_n - 1) / (numLabels - 1));
+      const dt = points[idx].date;
+      const dayKey = `${dt.getMonth()+1}-${dt.getDate()}`;
+      if (shown.has(dayKey)) continue;
+      shown.add(dayKey);
+      const x = xIdx(idx);
+      if (x > pad.left + 20 && x < W - pad.right - 20) {
+        ctx.fillText(
+          `${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`,
+          x, H - pad.bottom + 16
+        );
+      }
+    }
+  }
+
+  // Y-axis labels
+  ctx.save();
+  ctx.translate(14, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#3b82f6';
+  ctx.font = '11px Consolas, Monaco, Courier New, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Pips', 0, 0);
+  ctx.restore();
+
+  if (hasPln) {
+    ctx.save();
+    ctx.translate(W - 6, H / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '11px Consolas, Monaco, Courier New, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(_mt5Currency || 'PLN', 0, 0);
+    ctx.restore();
+  }
+
+  // Legend
+  const legendY = 12;
+  ctx.font = '11px Consolas, Monaco, Courier New, monospace';
+  ctx.textAlign = 'left';
+  // Pips legend
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillRect(pad.left, legendY - 6, 14, 3);
+  ctx.fillText(`Pips: ${lastPips >= 0 ? '+' : ''}${lastPips.toFixed(1)}`, pad.left + 18, legendY);
+  // PLN legend
+  if (hasPln) {
+    const lastPln = points[points.length - 1].cumPln;
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(pad.left + 130, legendY - 6, 14, 3);
+    ctx.fillText(`${_mt5Currency || 'PLN'}: ${lastPln >= 0 ? '+' : ''}${lastPln.toFixed(0)}`, pad.left + 148, legendY);
+  }
+  // Kelly deploy legend
+  if (kellyDeployDate.getTime() >= minDate && kellyDeployDate.getTime() <= maxDate) {
+    const klx = hasPln ? pad.left + 260 : pad.left + 130;
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(klx, legendY - 2);
+    ctx.lineTo(klx + 14, legendY - 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#a855f7';
+    ctx.fillText('Kelly sizing', klx + 18, legendY);
+  }
+  // Kelly-v3 deploy legend
+  if (kellyV3DeployDate.getTime() >= minDate && kellyV3DeployDate.getTime() <= maxDate) {
+    const kv3lx = hasPln ? pad.left + 370 : pad.left + 240;
+    ctx.strokeStyle = '#14b8a6';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(kv3lx, legendY - 2);
+    ctx.lineTo(kv3lx + 14, legendY - 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#14b8a6';
+    ctx.fillText('Kelly-v3 sizing', kv3lx + 18, legendY);
+  }
+}
+
+// ============================================================
+// CHART - Intraday P/L by Hour (each day = separate line)
+// ============================================================
+const INTRADAY_PALETTE = [
+  '#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#ec4899',
+  '#06b6d4','#f97316','#14b8a6','#6366f1','#84cc16','#e11d48',
+  '#0ea5e9','#a855f7','#10b981','#d946ef','#0891b2','#be123c',
+  '#4f46e5','#ca8a04','#059669','#7c3aed','#db2777','#0d9488',
+  '#2563eb','#dc2626','#16a34a','#ea580c','#9333ea','#e11d48',
+];
+
+function applyIntradayRangeFilter(trades) {
+  const range = document.getElementById('intradayRangeFilter')?.value || '14';
+  if (range === 'all') return trades;
+  const days = parseInt(range);
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - days);
+  cutoff.setUTCHours(0, 0, 0, 0);
+  return trades.filter(t => t.entryDate >= cutoff);
+}
+
+function redrawIntradayChart() {
+  intradaySelectedDay = null;
+  if (intradayViewMode === 'heatmap') drawIntradayHeatmap();
+  else drawIntradayChart();
+}
+
+function drawIntradayChart() {
+  const canvas = document.getElementById('intradayChart');
+  if (!canvas || !_intradayModelTrades.length) return;
+
+  const sigFilter = document.getElementById('intradaySignalFilter')?.value || 'all';
+  const symFilter = document.getElementById('intradaySymbolFilter')?.value || 'all';
+  const dirFilter = document.getElementById('intradayDirFilter')?.value || 'all';
+
+  let trades = _intradayModelTrades.filter(t => !t.isTest);
+  if (sigFilter !== 'all') trades = trades.filter(t => t.signal === sigFilter);
+  if (symFilter !== 'all') trades = trades.filter(t => t.symbol === symFilter);
+  if (dirFilter !== 'all') trades = trades.filter(t => t.direction === dirFilter);
+  trades = applyIntradayRangeFilter(trades);
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 32, H = 350;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  if (!trades.length) {
+    ctx.fillStyle = '#6b7280'; ctx.font = '13px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('No trades match selected filters', W / 2, H / 2);
+    const leg = document.getElementById('intradayLegend'); if (leg) leg.innerHTML = '';
+    const sum = document.getElementById('intradayHourlySummary'); if (sum) sum.innerHTML = '';
+    const ses = document.getElementById('intradaySessionSummary'); if (ses) ses.innerHTML = '';
+    canvas._intradayData = null;
+    return;
+  }
+
+  // Group by day (LOCAL date, matching index.html) based on entry time
+  const dayMap = {};
+  trades.forEach(t => {
+    const d = t.entryDate;
+    const dayKey = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (!dayMap[dayKey]) dayMap[dayKey] = [];
+    dayMap[dayKey].push(t);
+  });
+
+  // Build per-day line data
+  const dayLines = [];
+  for (const [dayKey, dayTrades] of Object.entries(dayMap)) {
+    dayTrades.sort((a, b) => a.entryDate - b.entryDate);
+    let cumPips = 0;
+    const points = [];
+    const hasOpen = dayTrades.some(t => t.isOpen);
+    // Origin at y=0 at the hour of the first trade
+    const firstH = dayTrades[0].entryDate.getHours() + dayTrades[0].entryDate.getMinutes() / 60;
+    points.push({ hour: firstH, cumPips: 0, trade: null });
+    dayTrades.forEach(t => {
+      cumPips += t.pnl_pips;
+      const hour = t.entryDate.getHours() + t.entryDate.getMinutes() / 60;
+      points.push({ hour, cumPips, trade: t });
+    });
+    dayLines.push({ dayKey, points, totalPips: cumPips, count: dayTrades.length, hasOpen });
+  }
+  dayLines.sort((a, b) => a.dayKey.localeCompare(b.dayKey));
+
+  // Ranges
+  const allPts = dayLines.flatMap(d => d.points);
+  const minPips = Math.min(0, ...allPts.map(p => p.cumPips));
+  const maxPips = Math.max(0, ...allPts.map(p => p.cumPips));
+  const rangePips = maxPips - minPips || 1;
+
+  const pad = { top: 28, right: 20, bottom: 48, left: 56 };
+  const cw = W - pad.left - pad.right, ch = H - pad.top - pad.bottom;
+  function xH(h) { return pad.left + (h / 24) * cw; }
+  function yP(v) { return pad.top + ch - ((v - minPips) / rangePips * ch); }
+
+  // --- Draw order: sessions → grid → zero → lines → dots → labels ---
+
+  // Market session bands
+  ctx.globalAlpha = 0.05;
+  ctx.fillStyle = '#ec4899'; // Sydney 21-06 UTC (wraps midnight)
+  ctx.fillRect(xH(21), pad.top, xH(24) - xH(21), ch);
+  ctx.fillRect(xH(0), pad.top, xH(6) - xH(0), ch);
+  ctx.fillStyle = '#f59e0b'; // Tokyo 00-09 UTC
+  ctx.fillRect(xH(0), pad.top, xH(9) - xH(0), ch);
+  ctx.fillStyle = '#3b82f6'; // London 08-16 UTC
+  ctx.fillRect(xH(8), pad.top, xH(16) - xH(8), ch);
+  ctx.fillStyle = '#16a34a'; // New York 13-21 UTC
+  ctx.fillRect(xH(13), pad.top, xH(21) - xH(13), ch);
+  ctx.globalAlpha = 1.0;
+
+  // Session labels
+  ctx.font = '9px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(236,72,153,0.4)'; ctx.fillText('Sydney', xH(22.5), pad.top + 12);
+  ctx.fillStyle = 'rgba(245,158,11,0.4)'; ctx.fillText('Tokyo', xH(4.5), pad.top + 12);
+  ctx.fillStyle = 'rgba(59,130,246,0.4)'; ctx.fillText('London', xH(12), pad.top + 12);
+  ctx.fillStyle = 'rgba(22,163,106,0.4)'; ctx.fillText('New York', xH(17), pad.top + 12);
+
+  // Vertical grid every 2 hours
+  for (let h = 0; h <= 24; h += 2) {
+    const x = xH(h);
+    ctx.strokeStyle = h % 6 === 0 ? '#d1d5db' : '#e5e7eb'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, H - pad.bottom); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+    ctx.fillText(String(h).padStart(2, '0') + ':00', x, H - pad.bottom + 16);
+  }
+
+  // Horizontal grid
+  const gridN = 6;
+  for (let i = 0; i <= gridN; i++) {
+    const v = minPips + (rangePips / gridN) * i;
+    const y = yP(v);
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(0), pad.left - 8, y + 4);
+  }
+
+  // Zero line
+  ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.left, yP(0)); ctx.lineTo(W - pad.right, yP(0)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Day colors
+  const nDays = dayLines.length;
+  const dayColors = dayLines.map((_, i) => INTRADAY_PALETTE[i % INTRADAY_PALETTE.length]);
+
+  // Draw day lines and dots
+  const dotCoords = [];
+  const sel = intradaySelectedDay;  // null = all, index = highlight one
+  dayLines.forEach((day, di) => {
+    const color = dayColors[di];
+    const pts = day.points;
+    const isSelected = sel === di;
+    const isDimmed = sel !== null && !isSelected;
+
+    // Line
+    ctx.strokeStyle = color;
+    const baseWidth = nDays <= 8 ? 2.5 : nDays <= 15 ? 1.8 : 1.2;
+    if (sel !== null) {
+      ctx.lineWidth = isSelected ? baseWidth : 1.0;
+      ctx.globalAlpha = isSelected ? 1.0 : 0.12;
+    } else {
+      ctx.lineWidth = baseWidth;
+      ctx.globalAlpha = nDays <= 8 ? 0.85 : nDays <= 15 ? 0.6 : 0.4;
+    }
+    ctx.beginPath();
+    ctx.moveTo(xH(pts[0].hour), yP(pts[0].cumPips));
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(xH(pts[i].hour), yP(pts[i].cumPips));
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+
+    // Dots (skip origin)
+    const baseDotR = nDays <= 8 ? 4 : 3;
+    const dotR = isDimmed ? 2 : baseDotR;
+    pts.forEach((p, pi) => {
+      if (!p.trade) return;
+      const cx = xH(p.hour), cy = yP(p.cumPips);
+      ctx.globalAlpha = isDimmed ? 0.12 : 1.0;
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fill();
+      if (!isDimmed) {
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1.0;
+      dotCoords.push({ x: cx, y: cy, dayIdx: di, pointIdx: pi, point: p });
+    });
+
+    // Day-end label (small, at last point) — skip for dimmed days
+    if (pts.length > 1 && !isDimmed) {
+      const last = pts[pts.length - 1];
+      ctx.fillStyle = color; ctx.font = '9px Consolas,Monaco,monospace'; ctx.textAlign = 'left';
+      const labelX = xH(last.hour) + 6;
+      if (labelX < W - pad.right - 30) {
+        ctx.fillText(day.dayKey.slice(5), labelX, yP(last.cumPips) + 3);
+      }
+    }
+  });
+
+  canvas._intradayData = { dayLines, dayColors, dotCoords, dpr };
+
+  // Y-axis label
+  ctx.save(); ctx.translate(14, H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#6b7280'; ctx.font = '11px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('Cumul. Pips (per day)', 0, 0); ctx.restore();
+
+  // X-axis label
+  ctx.fillStyle = '#9ca3af'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('Hour (UTC)', W / 2, H - 4);
+
+  // Legend (compact grid, clickable)
+  const legend = document.getElementById('intradayLegend');
+  if (legend) {
+    const wdShort = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    legend.innerHTML = dayLines.map((d, i) => {
+      const cls = d.totalPips >= 0 ? 'green' : 'red';
+      const dt = new Date(d.dayKey + 'T12:00:00');
+      const wd = wdShort[dt.getDay()];
+      const active = intradaySelectedDay === i;
+      const dimmed = intradaySelectedDay !== null && !active;
+      const style = 'color:' + dayColors[i] + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;padding:1px 4px;border-radius:4px' +
+        (active ? ';outline:2px solid ' + dayColors[i] + ';font-weight:700' : '') +
+        (dimmed ? ';opacity:0.35' : '');
+      const openMark = d.hasOpen ? '~' : '';
+      return '<span style="' + style + '" data-day-idx="' + i + '">' +
+        '&#9679; ' + d.dayKey.slice(5) + ' ' + wd +
+        ' <span class="' + cls + '">' + openMark + (d.totalPips >= 0 ? '+' : '') + d.totalPips.toFixed(0) + '</span>' +
+        '<span style="color:#9ca3af">/' + d.count + '</span></span>';
+    }).join('');
+    legend.onclick = function(e) {
+      const span = e.target.closest('[data-day-idx]');
+      if (!span) return;
+      const idx = parseInt(span.dataset.dayIdx);
+      intradaySelectedDay = intradaySelectedDay === idx ? null : idx;
+      drawIntradayChart();
+    };
+  }
+
+  // Hourly summary table
+  renderIntradayHourlySummary(trades);
+
+  // Session performance breakdown
+  renderSessionSummary(trades);
+}
+
+function renderIntradayHourlySummary(trades) {
+  const el = document.getElementById('intradayHourlySummary');
+  if (!el) return;
+
+  // 2-hour buckets
+  const buckets = {};
+  for (let h = 0; h < 24; h += 2) buckets[h] = [];
+  trades.forEach(t => {
+    const hour = t.entryDate.getHours();
+    const bucket = Math.floor(hour / 2) * 2;
+    buckets[bucket].push(t);
+  });
+
+  const cells = Object.entries(buckets).map(([h, arr]) => {
+    const hEnd = parseInt(h) + 2;
+    const label = String(h).padStart(2, '0') + '-' + String(hEnd).padStart(2, '0');
+    if (!arr.length) return '<div style="text-align:center;padding:6px 2px;color:#d1d5db;font-size:10px;border-right:1px solid #f3f4f6">' +
+      '<div style="font-weight:600;color:#9ca3af">' + label + '</div><div>-</div></div>';
+    const st = calcStats(arr);
+    const pipsCls = st.totalPips >= 0 ? 'green' : 'red';
+    const wrCls = st.wr >= 56.7 ? 'green' : st.wr >= 50 ? 'yellow' : 'red';
+    return '<div style="text-align:center;padding:6px 2px;font-size:10px;border-right:1px solid #f3f4f6">' +
+      '<div style="font-weight:600;color:#4b5563">' + label + '</div>' +
+      '<div><span class="' + pipsCls + '">' + (st.totalPips >= 0 ? '+' : '') + st.totalPips.toFixed(1) + 'p</span></div>' +
+      '<div><span class="' + wrCls + '">' + st.wr.toFixed(0) + '%</span> <span style="color:#9ca3af">(' + st.count + ')</span></div>' +
+      '</div>';
+  }).join('');
+
+  el.innerHTML = '<div style="margin-top:10px;font-size:11px;color:#6b7280;margin-bottom:4px">Hourly Summary (UTC)</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(12,1fr);background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;overflow:hidden">' + cells + '</div>';
+}
+
+function getSession(hour) {
+  if (hour >= 21) return 'Sydney';
+  if (hour < 8) return 'Tokyo';
+  if (hour < 13) return 'London';
+  return 'New York';
+}
+
+const SESSION_META = {
+  'Sydney':   { range: '21-00', color: '#ec4899', icon: '&#127757;' },
+  'Tokyo':    { range: '00-08', color: '#f59e0b', icon: '&#127471;&#127477;' },
+  'London':   { range: '08-13', color: '#3b82f6', icon: '&#127468;&#127463;' },
+  'New York': { range: '13-21', color: '#16a34a', icon: '&#127482;&#127480;' },
+};
+const SESSION_ORDER = ['Sydney', 'Tokyo', 'London', 'New York'];
+
+function renderSessionSummary(trades) {
+  const el = document.getElementById('intradaySessionSummary');
+  if (!el || !trades.length) { if (el) el.innerHTML = ''; return; }
+
+  // Classify trades by session
+  const sessionTrades = { 'Sydney': [], 'Tokyo': [], 'London': [], 'New York': [] };
+  trades.forEach(t => {
+    const h = t.entryDate.getHours() + t.entryDate.getMinutes() / 60;
+    sessionTrades[getSession(h)].push(t);
+  });
+
+  // --- Overview cards ---
+  const cards = SESSION_ORDER.map(name => {
+    const m = SESSION_META[name];
+    const arr = sessionTrades[name];
+    if (!arr.length) return '<div style="text-align:center;padding:12px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#f9fafb">' +
+      '<div style="font-weight:600;font-size:12px;color:' + m.color + '">' + m.icon + ' ' + name + '</div>' +
+      '<div style="font-size:10px;color:#9ca3af">' + m.range + ' UTC</div>' +
+      '<div style="color:#d1d5db;font-size:11px;margin-top:6px">No trades</div></div>';
+    const st = calcStats(arr);
+    const pipsCls = st.totalPips >= 0 ? 'green' : 'red';
+    const wrCls = st.wr >= 56.7 ? 'green' : st.wr >= 50 ? 'yellow' : 'red';
+    const pfCls = st.pf >= 1.5 ? 'green' : st.pf >= 1.0 ? 'yellow' : 'red';
+    return '<div style="text-align:center;padding:12px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#fff">' +
+      '<div style="font-weight:600;font-size:12px;color:' + m.color + '">' + m.icon + ' ' + name + '</div>' +
+      '<div style="font-size:10px;color:#9ca3af">' + m.range + ' UTC</div>' +
+      '<div style="margin-top:6px;font-size:18px;font-weight:700" class="' + pipsCls + '">' + (st.totalPips >= 0 ? '+' : '') + st.totalPips.toFixed(1) + 'p</div>' +
+      '<div style="font-size:11px;margin-top:2px"><span class="' + wrCls + '">' + st.wr.toFixed(0) + '% WR</span> &middot; ' +
+      '<span class="' + pfCls + '">PF ' + (st.pf >= 999 ? 'INF' : st.pf.toFixed(2)) + '</span></div>' +
+      '<div style="font-size:10px;color:#6b7280;margin-top:2px">' + st.count + ' trades &middot; avg ' +
+      '<span class="' + (st.avgPips >= 0 ? 'green' : 'red') + '">' + (st.avgPips >= 0 ? '+' : '') + st.avgPips.toFixed(1) + 'p</span></div>' +
+      (st.mt5Count > 0 ? '<div style="font-size:10px;color:#6b7280">' +
+      '<span class="' + (st.totalMt5 >= 0 ? 'green' : 'red') + '">' + (st.totalMt5 >= 0 ? '+' : '') + st.totalMt5.toFixed(0) + ' PLN</span></div>' : '') +
+      '</div>';
+  }).join('');
+
+  // --- Per-signal breakdown table ---
+  // Collect signals with at least 2 trades
+  const sigSessions = {};
+  trades.forEach(t => {
+    const sig = t.signal;
+    const sess = getSession(t.entryDate.getHours() + t.entryDate.getMinutes() / 60);
+    if (!sigSessions[sig]) sigSessions[sig] = { 'Sydney': [], 'Tokyo': [], 'London': [], 'New York': [] };
+    sigSessions[sig][sess].push(t);
+  });
+
+  const sigRows = Object.entries(sigSessions)
+    .filter(([_, s]) => SESSION_ORDER.reduce((n, k) => n + s[k].length, 0) >= 2)
+    .sort((a, b) => {
+      const totalA = SESSION_ORDER.reduce((n, k) => n + a[1][k].length, 0);
+      const totalB = SESSION_ORDER.reduce((n, k) => n + b[1][k].length, 0);
+      return totalB - totalA;
+    })
+    .map(([sig, sessions]) => {
+      const cells = SESSION_ORDER.map(sess => {
+        const arr = sessions[sess];
+        if (!arr.length) return '<td style="text-align:center;color:#d1d5db;font-size:10px">-</td>';
+        const st = calcStats(arr);
+        const pipsCls = st.totalPips >= 0 ? 'green' : 'red';
+        const wrCls = st.wr >= 56.7 ? 'green' : st.wr >= 50 ? 'yellow' : 'red';
+        return '<td style="text-align:center;font-size:10px;padding:4px 3px">' +
+          '<span class="' + wrCls + '">' + st.wr.toFixed(0) + '%</span>' +
+          '<span style="color:#9ca3af">/' + st.count + '</span> ' +
+          '<span class="' + pipsCls + '">' + (st.totalPips >= 0 ? '+' : '') + st.totalPips.toFixed(0) + 'p</span></td>';
+      }).join('');
+      return '<tr><td style="font-size:10px;padding:4px 6px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="' + sig + '">' + sig + '</td>' + cells + '</tr>';
+    }).join('');
+
+  const tableHtml = sigRows ? '<div style="margin-top:10px;font-size:11px;color:#6b7280;margin-bottom:4px">Signal Performance by Session</div>' +
+    '<div class="table-wrap"><table style="font-size:10px"><thead><tr>' +
+    '<th style="text-align:left;font-size:10px;padding:6px">Signal</th>' +
+    SESSION_ORDER.map(s => '<th style="text-align:center;font-size:10px;padding:6px;color:' + SESSION_META[s].color + '">' + s + '<br><span style="font-weight:400;color:#9ca3af">' + SESSION_META[s].range + '</span></th>').join('') +
+    '</tr></thead><tbody>' + sigRows + '</tbody></table></div>' : '';
+
+  el.innerHTML = '<div style="margin-top:12px;font-size:11px;color:#6b7280;margin-bottom:4px">Market Session Performance</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' + cards + '</div>' +
+    tableHtml;
+}
+
+// ============================================================
+// Toggle Intraday View (Lines / Heatmap)
+// ============================================================
+function toggleIntradayView() {
+  intradayViewMode = intradayViewMode === 'lines' ? 'heatmap' : 'lines';
+  const btn = document.getElementById('intradayToggleBtn');
+  if (btn) btn.textContent = intradayViewMode === 'lines' ? 'Heatmap' : 'Lines';
+  redrawIntradayChart();
+}
+
+// ============================================================
+// Heatmap color helper: diverging red -> white -> green
+// ============================================================
+function heatColor(value, maxAbs) {
+  if (maxAbs === 0) return '#f3f4f6';
+  const t = Math.max(-1, Math.min(1, value / maxAbs));
+  if (t >= 0) {
+    const r = Math.round(255 - t * (255 - 22));
+    const g = Math.round(255 - t * (255 - 197));
+    const b = Math.round(255 - t * (255 - 94));
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const s = -t;
+    const r = Math.round(255 - s * (255 - 220));
+    const g = Math.round(255 - s * (255 - 38));
+    const b = Math.round(255 - s * (255 - 38));
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+// ============================================================
+// CHART - Intraday Heatmap (day-of-week x hour)
+// ============================================================
+function drawIntradayHeatmap() {
+  const canvas = document.getElementById('intradayChart');
+  if (!canvas || !_intradayModelTrades.length) return;
+
+  const sigFilter = document.getElementById('intradaySignalFilter')?.value || 'all';
+  const symFilter = document.getElementById('intradaySymbolFilter')?.value || 'all';
+  const dirFilter = document.getElementById('intradayDirFilter')?.value || 'all';
+
+  let trades = _intradayModelTrades.filter(t => !t.isTest);
+  if (sigFilter !== 'all') trades = trades.filter(t => t.signal === sigFilter);
+  if (symFilter !== 'all') trades = trades.filter(t => t.symbol === symFilter);
+  if (dirFilter !== 'all') trades = trades.filter(t => t.direction === dirFilter);
+  trades = applyIntradayRangeFilter(trades);
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 32, H = 350;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  if (!trades.length) {
+    ctx.fillStyle = '#6b7280'; ctx.font = '13px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('No trades match selected filters', W / 2, H / 2);
+    const leg = document.getElementById('intradayLegend'); if (leg) leg.innerHTML = '';
+    const sum = document.getElementById('intradayHourlySummary'); if (sum) sum.innerHTML = '';
+    const ses = document.getElementById('intradaySessionSummary'); if (ses) ses.innerHTML = '';
+    canvas._intradayData = null;
+    canvas._intradayHeatmapData = null;
+    return;
+  }
+
+  // 7 rows (Mon=0..Sun=6), 24 columns (hours 0-23) in LOCAL time
+  const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  function remapDay(jsDay) { return jsDay === 0 ? 6 : jsDay - 1; }
+
+  const cells = {};
+  for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h++) cells[d + '_' + h] = [];
+
+  trades.forEach(t => {
+    const d = remapDay(t.entryDate.getDay());
+    const h = t.entryDate.getHours();
+    cells[d + '_' + h].push(t);
+  });
+
+  // Compute totals per cell
+  const cellData = [];
+  let maxAbs = 0;
+  for (let d = 0; d < 7; d++) {
+    for (let h = 0; h < 24; h++) {
+      const arr = cells[d + '_' + h];
+      const totalPips = arr.reduce((s, t) => s + t.pnl_pips, 0);
+      const count = arr.length;
+      const wins = arr.filter(t => t.pnl_pips > 0).length;
+      cellData.push({ day: d, hour: h, totalPips, count, wins, trades: arr });
+      if (count > 0 && Math.abs(totalPips) > maxAbs) maxAbs = Math.abs(totalPips);
+    }
+  }
+
+  const pad = { top: 28, right: 20, bottom: 40, left: 44 };
+  const cw = W - pad.left - pad.right, ch = H - pad.top - pad.bottom;
+  const cellW = cw / 24, cellH = ch / 7;
+
+  // Session background bands (very subtle)
+  ctx.globalAlpha = 0.04;
+  ctx.fillStyle = '#ec4899'; // Sydney 21-24
+  ctx.fillRect(pad.left + 21 * cellW, pad.top, 3 * cellW, ch);
+  ctx.fillStyle = '#ec4899'; // Sydney 0-6
+  ctx.fillRect(pad.left, pad.top, 6 * cellW, ch);
+  ctx.fillStyle = '#f59e0b'; // Tokyo 0-9
+  ctx.fillRect(pad.left, pad.top, 9 * cellW, ch);
+  ctx.fillStyle = '#3b82f6'; // London 8-16
+  ctx.fillRect(pad.left + 8 * cellW, pad.top, 8 * cellW, ch);
+  ctx.fillStyle = '#16a34a'; // New York 13-21
+  ctx.fillRect(pad.left + 13 * cellW, pad.top, 8 * cellW, ch);
+  ctx.globalAlpha = 1.0;
+
+  // Draw cells
+  const cellRects = [];
+  cellData.forEach(c => {
+    const x = pad.left + c.hour * cellW;
+    const y = pad.top + c.day * cellH;
+    const bg = c.count > 0 ? heatColor(c.totalPips, maxAbs) : '#f9fafb';
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, cellW, cellH);
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 0.5;
+    ctx.strokeRect(x, y, cellW, cellH);
+
+    cellRects.push({ x, y, w: cellW, h: cellH, data: c });
+
+    // Compute perceived luminance from actual background color for text contrast
+    const bgM = bg.match(/\d+/g);
+    const isDark = bgM ? (0.299 * +bgM[0] + 0.587 * +bgM[1] + 0.114 * +bgM[2]) < 160 : false;
+
+    if (c.count > 0 && cellW > 28) {
+      // Pips text
+      const pipsStr = (c.totalPips >= 0 ? '+' : '') + c.totalPips.toFixed(0);
+      ctx.fillStyle = isDark ? '#fff' : '#374151';
+      ctx.font = 'bold 10px Consolas,Monaco,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(pipsStr, x + cellW / 2, y + cellH / 2 - 6);
+      // Count
+      ctx.fillStyle = isDark ? 'rgba(255,255,255,0.7)' : '#9ca3af';
+      ctx.font = '9px Consolas,Monaco,monospace';
+      ctx.fillText(c.count + 't', x + cellW / 2, y + cellH / 2 + 7);
+    } else if (c.count > 0 && cellW > 16) {
+      ctx.fillStyle = isDark ? '#fff' : '#374151';
+      ctx.font = '9px Consolas,Monaco,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(c.count + '', x + cellW / 2, y + cellH / 2);
+    }
+  });
+
+  // Y-axis: day names
+  ctx.fillStyle = '#4b5563'; ctx.font = '11px Consolas,Monaco,monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  DAY_NAMES.forEach((name, i) => {
+    ctx.fillText(name, pad.left - 6, pad.top + i * cellH + cellH / 2);
+  });
+
+  // X-axis: hour labels (every 2 hours)
+  ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let h = 0; h < 24; h += 2) {
+    ctx.fillText(String(h).padStart(2, '0'), pad.left + h * cellW + cellW, H - pad.bottom + 8);
+  }
+
+  // Session labels at top
+  ctx.font = '9px Consolas,Monaco,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(236,72,153,0.5)'; ctx.fillText('Sydney', pad.left + 22.5 * cellW, pad.top - 14);
+  ctx.fillStyle = 'rgba(245,158,11,0.5)'; ctx.fillText('Tokyo', pad.left + 4.5 * cellW, pad.top - 14);
+  ctx.fillStyle = 'rgba(59,130,246,0.5)'; ctx.fillText('London', pad.left + 12 * cellW, pad.top - 14);
+  ctx.fillStyle = 'rgba(22,163,106,0.5)'; ctx.fillText('New York', pad.left + 17 * cellW, pad.top - 14);
+
+  canvas._intradayHeatmapData = { cells: cellData, cellRects };
+  canvas._intradayData = null;
+
+  // Clear legend (not relevant for heatmap)
+  const leg = document.getElementById('intradayLegend'); if (leg) leg.innerHTML = '';
+
+  // Still show hourly summary and session summary
+  renderIntradayHourlySummary(trades);
+  renderSessionSummary(trades);
+}
+
+// ============================================================
+// CHART - Monthly Day Performance (bar chart by day-of-month)
+// ============================================================
+function drawMonthlyDayChart() {
+  const canvas = document.getElementById('monthlyDayChart');
+  if (!canvas) return;
+
+  // Read from cumulative chart data for x-axis alignment
+  const plCanvas = document.getElementById('plChart');
+  const plData = plCanvas?._plChartData;
+  if (!plData || !plData.points.length) {
+    const ctx2 = canvas.getContext('2d');
+    const dpr2 = window.devicePixelRatio || 1;
+    const rect2 = canvas.parentElement.getBoundingClientRect();
+    const W2 = rect2.width - 32, H2 = 300;
+    canvas.width = W2 * dpr2; canvas.height = H2 * dpr2;
+    canvas.style.width = W2 + 'px'; canvas.style.height = H2 + 'px';
+    ctx2.scale(dpr2, dpr2);
+    ctx2.fillStyle = '#6b7280'; ctx2.font = '13px Consolas,Monaco,monospace'; ctx2.textAlign = 'center';
+    ctx2.fillText('No trades in selected range', W2 / 2, H2 / 2);
+    canvas._monthlyDayData = null;
+    return;
+  }
+
+  const { points, xIdx, pad: plPad, W: plW, cw: plCw, _n, hasPln } = plData;
+
+  // Group cumulative chart points by LOCAL date (matching index.html)
+  const dayGroups = [];
+  const dayMap = {};
+  points.forEach((p, i) => {
+    const d = p.date;
+    const dk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (!(dk in dayMap)) {
+      dayMap[dk] = dayGroups.length;
+      dayGroups.push({ dateKey: dk, day: d.getDate(), month: d.getMonth(), pips: 0, pln: 0, wins: 0, count: 0, firstIdx: i, lastIdx: i, trades: [] });
+    }
+    const g = dayGroups[dayMap[dk]];
+    g.pips += p.pips;
+    if (p.hasMt5) g.pln += p.mt5Pnl;
+    g.count++;
+    if (p.pips > 0) g.wins++;
+    g.lastIdx = i;
+    g.trades.push(p);
+  });
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 32, H = 300;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  if (!dayGroups.length) {
+    ctx.fillStyle = '#6b7280'; ctx.font = '13px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('No data', W / 2, H / 2);
+    canvas._monthlyDayData = null;
+    return;
+  }
+
+  // Match cumulative chart's left/right padding for pixel-perfect alignment
+  const pad = { top: 24, right: plPad.right, bottom: 36, left: plPad.left };
+  const ch = H - pad.top - pad.bottom;
+
+  // Use cumulative chart's xIdx for bar positions (trade-index aligned)
+  // Scale factor: should be ~1.0 when both charts have same width and padding
+  const scale = (W - pad.left - pad.right) / plCw;
+
+  let maxAbs = 0;
+  dayGroups.forEach(g => { if (Math.abs(g.pips) > maxAbs) maxAbs = Math.abs(g.pips); });
+  if (maxAbs === 0) maxAbs = 1;
+
+  const yRange = maxAbs * 1.15;
+  function yP(v) { return pad.top + ch / 2 - (v / yRange) * (ch / 2); }
+  const zeroY = yP(0);
+
+  // PLN y-axis scale (independent range)
+  let maxAbsPln = 0;
+  if (hasPln) dayGroups.forEach(g => { if (Math.abs(g.pln) > maxAbsPln) maxAbsPln = Math.abs(g.pln); });
+  if (maxAbsPln === 0) maxAbsPln = 1;
+  const plnRange = maxAbsPln * 1.15;
+  function yPln(v) { return pad.top + ch / 2 - (v / plnRange) * (ch / 2); }
+
+  // Horizontal grid lines (pips left axis)
+  const gridStep = yRange > 200 ? 50 : yRange > 100 ? 25 : yRange > 50 ? 10 : 5;
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'right';
+  for (let v = -Math.floor(yRange / gridStep) * gridStep; v <= yRange; v += gridStep) {
+    if (v === 0) continue;
+    const y = yP(v);
+    if (y < pad.top || y > H - pad.bottom) continue;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.fillText(v.toFixed(0), pad.left - 8, y + 4);
+  }
+
+  // PLN right axis labels
+  if (hasPln) {
+    const plnStep = plnRange > 2000 ? 500 : plnRange > 1000 ? 250 : plnRange > 500 ? 100 : plnRange > 200 ? 50 : 25;
+    ctx.fillStyle = '#d97706'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'left';
+    for (let v = -Math.floor(plnRange / plnStep) * plnStep; v <= plnRange; v += plnStep) {
+      if (v === 0) continue;
+      const y = yPln(v);
+      if (y < pad.top || y > H - pad.bottom) continue;
+      ctx.fillText(v.toFixed(0), W - pad.right + 6, y + 4);
+    }
+  }
+
+  // Zero line
+  ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.left, zeroY); ctx.lineTo(W - pad.right, zeroY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#9ca3af'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'right';
+  ctx.fillText('0', pad.left - 8, zeroY + 4);
+
+  // Map cumulative chart x position to this chart's x position
+  function mapX(cumX) { return pad.left + (cumX - plPad.left) * scale; }
+
+  // Compute bar geometry for each day group
+  const barRects = [];
+  const gap = 2;
+  const barGeom = dayGroups.map(g => {
+    const x1 = mapX(xIdx(g.firstIdx));
+    const x2 = mapX(xIdx(g.lastIdx));
+    const halfDot = (_n > 1) ? (plCw / (_n - 1)) * scale * 0.5 : 20;
+    const barX = x1 - halfDot;
+    const barW = Math.max(6, (x2 - x1) + halfDot * 2 - gap);
+    return { barX, barW };
+  });
+
+  // Helper: draw text with white background for readability
+  function labelWithBg(text, x, y, font, color, align) {
+    ctx.font = font;
+    ctx.textAlign = align || 'center';
+    const m = ctx.measureText(text);
+    const px = 2, py = 1;
+    let lx = x - m.width / 2;
+    if (align === 'left') lx = x;
+    else if (align === 'right') lx = x - m.width;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillRect(lx - px, y - 8 - py, m.width + px * 2, 10 + py * 2);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
+  // Layer 1: Bar fills + outlines only (no text)
+  dayGroups.forEach((g, di) => {
+    const { barX, barW } = barGeom[di];
+    const barH = Math.abs(g.pips) / yRange * (ch / 2);
+    const barY = g.pips >= 0 ? zeroY - barH : zeroY;
+    const color = g.pips >= 0 ? '#16a34a' : '#dc2626';
+
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.8;
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.globalAlpha = 1.0;
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    barRects.push({ x: barX, y: barY, w: barW, h: barH, data: g });
+  });
+
+  // Layer 2: PLN dot+line (dots only drawn outside bar area)
+  if (hasPln) {
+    const plnPoints = [];
+    dayGroups.forEach((g, di) => {
+      const { barX, barW } = barGeom[di];
+      const barH = Math.abs(g.pips) / yRange * (ch / 2);
+      const barY = g.pips >= 0 ? zeroY - barH : zeroY;
+      const dotY = yPln(g.pln);
+      // Dot is "inside bar" if it falls within the bar's vertical extent (with margin)
+      const insideBar = dotY >= barY - 6 && dotY <= barY + barH + 6;
+      plnPoints.push({ x: barX + barW / 2, y: dotY, pln: g.pln, insideBar });
+    });
+    // Line
+    if (plnPoints.length > 1) {
+      ctx.strokeStyle = '#d97706'; ctx.lineWidth = 2; ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(plnPoints[0].x, plnPoints[0].y);
+      for (let i = 1; i < plnPoints.length; i++) ctx.lineTo(plnPoints[i].x, plnPoints[i].y);
+      ctx.stroke();
+    }
+    // Dots — skip when inside bar to avoid overlapping trade count text
+    plnPoints.forEach(pt => {
+      if (pt.insideBar) return;
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#d97706'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    });
+  }
+
+  // Layer 3: All text labels ON TOP (with white background so they're always readable)
+  dayGroups.forEach((g, di) => {
+    const { barX, barW } = barGeom[di];
+    const barH = Math.abs(g.pips) / yRange * (ch / 2);
+    const barY = g.pips >= 0 ? zeroY - barH : zeroY;
+
+    // Pips label above/below bar (no background — avoids covering PLN dots)
+    if (barH > 14 && barW > 16) {
+      const pipsStr = (g.pips >= 0 ? '+' : '') + g.pips.toFixed(0);
+      ctx.font = 'bold 9px Consolas,Monaco,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = g.pips >= 0 ? '#15803d' : '#b91c1c';
+      if (g.pips >= 0) {
+        ctx.fillText(pipsStr, barX + barW / 2, barY - 3);
+      } else {
+        ctx.fillText(pipsStr, barX + barW / 2, barY + barH + 10);
+      }
+    }
+
+    // Count inside bar (white text directly on bar, no background)
+    if (barH > 22 && barW > 14) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '8px Consolas,Monaco,monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(g.count + 't', barX + barW / 2, barY + barH / 2 + 3);
+    }
+
+    // Day label below x-axis
+    ctx.textBaseline = 'top';
+    if (barW > 30) {
+      ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+      ctx.fillText(g.dateKey.slice(5), barX + barW / 2, H - pad.bottom + 4);
+    } else if (barW > 14) {
+      ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+      ctx.fillText(String(g.day), barX + barW / 2, H - pad.bottom + 4);
+    } else if (barW > 8) {
+      ctx.fillStyle = '#6b7280'; ctx.font = '8px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+      ctx.fillText(String(g.day), barX + barW / 2, H - pad.bottom + 4);
+    }
+  });
+
+  // Y-axis labels
+  ctx.save(); ctx.translate(14, H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#6b7280'; ctx.font = '11px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('Daily Pips', 0, 0); ctx.restore();
+
+  if (hasPln) {
+    ctx.save(); ctx.translate(W - 6, H / 2); ctx.rotate(Math.PI / 2);
+    ctx.fillStyle = '#d97706'; ctx.font = '11px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+    ctx.fillText(_mt5Currency || 'PLN', 0, 0); ctx.restore();
+  }
+
+  canvas._monthlyDayData = { dayGroups, barRects, dpr, hasPln };
+}
+
+// ============================================================
+// Session Attribution Analysis
+// ============================================================
+function renderSessionAttribution(trades) {
+  if (!trades || !trades.length) return '';
+
+  // Stats by ENTRY session
+  const entrySessionTrades = { 'Sydney': [], 'Tokyo': [], 'London': [], 'New York': [] };
+  // Stats by EXIT session
+  const exitSessionTrades = { 'Sydney': [], 'Tokyo': [], 'London': [], 'New York': [] };
+  // Flow matrix: entry -> exit
+  const flow = {};
+  SESSION_ORDER.forEach(es => {
+    flow[es] = {};
+    SESSION_ORDER.forEach(xs => { flow[es][xs] = []; });
+  });
+
+  trades.forEach(t => {
+    const entrySess = getSession(t.entryDate.getHours());
+    entrySessionTrades[entrySess].push(t);
+    // Open positions have no exitDate — skip exit session and flow matrix
+    if (t.exitDate) {
+      const exitSess = getSession(t.exitDate.getHours());
+      exitSessionTrades[exitSess].push(t);
+      flow[entrySess][exitSess].push(t);
+    }
+  });
+
+  // --- Part A: Comparison cards ---
+  function renderSessionCards(label, sessionMap) {
+    const cards = SESSION_ORDER.map(name => {
+      const m = SESSION_META[name];
+      const arr = sessionMap[name];
+      if (!arr.length) return '<div style="text-align:center;padding:10px 6px;border:1px solid #e5e7eb;border-radius:6px;background:#f9fafb;min-width:0">' +
+        '<div style="font-weight:600;font-size:11px;color:' + m.color + '">' + m.icon + ' ' + name + '</div>' +
+        '<div style="color:#d1d5db;font-size:10px;margin-top:4px">No trades</div></div>';
+      const st = calcStats(arr);
+      const pipsCls = st.totalPips >= 0 ? 'green' : 'red';
+      const wrCls = st.wr >= 56.7 ? 'green' : st.wr >= 50 ? 'yellow' : 'red';
+      const pfCls = st.pf >= 1.5 ? 'green' : st.pf >= 1.0 ? 'yellow' : 'red';
+      return '<div style="text-align:center;padding:10px 6px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;min-width:0">' +
+        '<div style="font-weight:600;font-size:11px;color:' + m.color + '">' + m.icon + ' ' + name + '</div>' +
+        '<div style="margin-top:4px;font-size:16px;font-weight:700" class="' + pipsCls + '">' + (st.totalPips >= 0 ? '+' : '') + st.totalPips.toFixed(1) + 'p</div>' +
+        '<div style="font-size:10px;margin-top:2px"><span class="' + wrCls + '">' + st.wr.toFixed(0) + '%</span> PF <span class="' + pfCls + '">' + (st.pf >= 999 ? 'INF' : st.pf.toFixed(2)) + '</span></div>' +
+        '<div style="font-size:10px;color:#6b7280">' + st.count + ' trades</div></div>';
+    }).join('');
+    return '<div style="margin-bottom:8px">' +
+      '<div style="font-size:11px;color:#6b7280;margin-bottom:4px;font-weight:600">' + label + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">' + cards + '</div></div>';
+  }
+
+  const entryCards = renderSessionCards('By Entry Session (when trade opened)', entrySessionTrades);
+  const exitCards = renderSessionCards('By Exit Session (when trade closed)', exitSessionTrades);
+
+  // --- Part B: Flow Matrix ---
+  let matrixRows = '';
+  SESSION_ORDER.forEach(es => {
+    let cells = '<td style="font-size:10px;padding:6px 8px;white-space:nowrap;font-weight:600;color:' + SESSION_META[es].color + '">' + es + '</td>';
+    SESSION_ORDER.forEach(xs => {
+      const arr = flow[es][xs];
+      if (!arr.length) {
+        cells += '<td style="text-align:center;font-size:10px;padding:6px 4px;color:#d1d5db">-</td>';
+        return;
+      }
+      const st = calcStats(arr);
+      const isDiag = es === xs;
+      const bgColor = st.totalPips > 0 ? 'rgba(22,163,74,0.08)' : st.totalPips < 0 ? 'rgba(220,38,38,0.08)' : '#fff';
+      const diagBorder = isDiag ? 'border:2px solid #e5e7eb;' : '';
+      const pipsCls = st.totalPips >= 0 ? 'green' : 'red';
+      const wrCls = st.wr >= 56.7 ? 'green' : st.wr >= 50 ? 'yellow' : 'red';
+      cells += '<td style="text-align:center;font-size:10px;padding:6px 4px;background:' + bgColor + ';' + diagBorder + '">' +
+        '<div class="' + pipsCls + '" style="font-weight:600">' + (st.totalPips >= 0 ? '+' : '') + st.totalPips.toFixed(0) + 'p</div>' +
+        '<div><span class="' + wrCls + '">' + st.wr.toFixed(0) + '%</span> <span style="color:#9ca3af">(' + st.count + ')</span></div></td>';
+    });
+    matrixRows += '<tr>' + cells + '</tr>';
+  });
+
+  const matrixHtml = '<div style="margin-top:8px">' +
+    '<div style="font-size:11px;color:#6b7280;margin-bottom:4px;font-weight:600">Session Flow Matrix (Opened in -> Closed in)</div>' +
+    '<div class="table-wrap"><table style="font-size:10px"><thead><tr>' +
+    '<th style="text-align:left;font-size:10px;padding:6px">Opened \\ Closed</th>' +
+    SESSION_ORDER.map(s => '<th style="text-align:center;font-size:10px;padding:6px;color:' + SESSION_META[s].color + '">' + s + '</th>').join('') +
+    '</tr></thead><tbody>' + matrixRows + '</tbody></table></div></div>';
+
+  return '<div class="section">' +
+    '<h2>Session Attribution Analysis</h2>' +
+    entryCards + exitCards + matrixHtml +
+    '</div>';
+}
+
+// Intraday chart tooltip
+(function setupIntradayTooltip() {
+  let tip = null;
+  function getTip() {
+    if (tip) return tip;
+    tip = document.createElement('div');
+    Object.assign(tip.style, {
+      position: 'absolute', pointerEvents: 'none', display: 'none', zIndex: '1000',
+      background: '#1f2937', color: '#f3f4f6', padding: '8px 12px', borderRadius: '8px',
+      fontSize: '12px', fontFamily: 'Consolas,Monaco,monospace', lineHeight: '1.5',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)', whiteSpace: 'nowrap', border: '1px solid #374151'
+    });
+    document.body.appendChild(tip);
+    return tip;
+  }
+  document.addEventListener('mousemove', e => {
+    const canvas = document.getElementById('intradayChart');
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      if (tip) tip.style.display = 'none';
+      return;
+    }
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const t = getTip();
+
+    // --- Heatmap mode ---
+    if (intradayViewMode === 'heatmap' && canvas._intradayHeatmapData) {
+      const { cellRects } = canvas._intradayHeatmapData;
+      let hit = null;
+      for (const cr of cellRects) {
+        if (mx >= cr.x && mx <= cr.x + cr.w && my >= cr.y && my <= cr.y + cr.h && cr.data.count > 0) {
+          hit = cr.data; break;
+        }
+      }
+      if (!hit) { t.style.display = 'none'; canvas.style.cursor = 'default'; return; }
+      canvas.style.cursor = 'pointer';
+      const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const st = calcStats(hit.trades);
+      const pipsCls = hit.totalPips >= 0 ? '#34d399' : '#f87171';
+      const wrCls = st.wr >= 56.7 ? '#34d399' : st.wr >= 50 ? '#fbbf24' : '#f87171';
+      const pfCls = st.pf >= 1.5 ? '#34d399' : st.pf >= 1.0 ? '#fbbf24' : '#f87171';
+      let html = '<div style="font-weight:600;color:#93c5fd">' + DAY_NAMES[hit.day] + ' ' + String(hit.hour).padStart(2, '0') + ':00 UTC</div>';
+      html += '<div><span style="color:#9ca3af">Total P/L:</span> <span style="color:' + pipsCls + '">' + (hit.totalPips >= 0 ? '+' : '') + hit.totalPips.toFixed(1) + ' pips</span></div>';
+      html += '<div><span style="color:#9ca3af">Trades:</span> ' + hit.count + ' (' + hit.wins + 'W / ' + (hit.count - hit.wins) + 'L)</div>';
+      html += '<div><span style="color:#9ca3af">Win Rate:</span> <span style="color:' + wrCls + '">' + st.wr.toFixed(1) + '%</span></div>';
+      html += '<div><span style="color:#9ca3af">Profit Factor:</span> <span style="color:' + pfCls + '">' + (st.pf >= 999 ? 'INF' : st.pf.toFixed(2)) + '</span></div>';
+      html += '<div><span style="color:#9ca3af">Avg P/L:</span> <span style="color:' + pipsCls + '">' + (st.avgPips >= 0 ? '+' : '') + st.avgPips.toFixed(1) + ' pips</span></div>';
+      t.innerHTML = html;
+      t.style.display = 'block';
+      let tx = e.pageX + 14, ty = e.pageY - 10;
+      if (tx + t.offsetWidth > window.innerWidth - 10) tx = e.pageX - t.offsetWidth - 14;
+      if (ty + t.offsetHeight > window.innerHeight + window.scrollY - 10) ty = e.pageY - t.offsetHeight - 10;
+      t.style.left = tx + 'px'; t.style.top = ty + 'px';
+      return;
+    }
+
+    // --- Lines mode ---
+    if (!canvas._intradayData) { t.style.display = 'none'; return; }
+    const { dayLines, dayColors, dotCoords } = canvas._intradayData;
+
+    let closest = null, minDist = 14;
+    for (const d of dotCoords) {
+      const dist = Math.hypot(d.x - mx, d.y - my);
+      if (dist < minDist) { minDist = dist; closest = d; }
+    }
+
+    if (!closest) { t.style.display = 'none'; canvas.style.cursor = 'default'; return; }
+    canvas.style.cursor = 'pointer';
+
+    const p = closest.point;
+    const tr = p.trade;
+    const day = dayLines[closest.dayIdx];
+    const dirColor = tr.direction === 'long' ? '#34d399' : '#f87171';
+    const pipsColor = tr.pnl_pips >= 0 ? '#34d399' : '#f87171';
+    const dt = tr.entryDate;
+    const timeStr = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+
+    let html = '<div style="font-weight:600;color:' + dayColors[closest.dayIdx] + '">' + day.dayKey + ' ' + timeStr + '</div>';
+    html += '<div>' + tr.symbol + ' <span style="color:' + dirColor + '">' + tr.direction.toUpperCase() + '</span> ' + tr.signal + '</div>';
+    html += '<div><span style="color:#9ca3af">Trade P/L:</span> <span style="color:' + pipsColor + '">' + (tr.pnl_pips >= 0 ? '+' : '') + tr.pnl_pips.toFixed(1) + ' pips</span></div>';
+    html += '<div><span style="color:#9ca3af">Day cumul:</span> ' + (p.cumPips >= 0 ? '+' : '') + p.cumPips.toFixed(1) + ' pips</div>';
+    const exitLabel = tr.isOpen ? '<span style="color:#3b82f6;font-weight:600">OPEN (unrealized)</span>' : tr.exit_reason;
+    html += '<div><span style="color:#9ca3af">Exit:</span> ' + exitLabel + ' <span style="color:#6b7280">| Lots: ' + (tr.size != null ? tr.size.toFixed(2) : '-') + '</span></div>';
+    html += '<div style="color:#6b7280;font-size:10px;margin-top:2px">Day total: ' + (day.totalPips >= 0 ? '+' : '') + day.totalPips.toFixed(1) + 'p (' + day.count + ' trades)</div>';
+
+    t.innerHTML = html;
+    t.style.display = 'block';
+    let tx = e.pageX + 14, ty = e.pageY - 10;
+    if (tx + t.offsetWidth > window.innerWidth - 10) tx = e.pageX - t.offsetWidth - 14;
+    if (ty + t.offsetHeight > window.innerHeight + window.scrollY - 10) ty = e.pageY - t.offsetHeight - 10;
+    t.style.left = tx + 'px'; t.style.top = ty + 'px';
+  });
+  document.addEventListener('mouseleave', () => { if (tip) tip.style.display = 'none'; });
+})();
+
+// Monthly day chart tooltip
+(function setupMonthlyDayTooltip() {
+  let tip = null;
+  function getTip() {
+    if (tip) return tip;
+    tip = document.createElement('div');
+    Object.assign(tip.style, {
+      position: 'absolute', pointerEvents: 'none', display: 'none', zIndex: '1000',
+      background: '#1f2937', color: '#f3f4f6', padding: '8px 12px', borderRadius: '8px',
+      fontSize: '12px', fontFamily: 'Consolas,Monaco,monospace', lineHeight: '1.5',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)', whiteSpace: 'nowrap', border: '1px solid #374151'
+    });
+    document.body.appendChild(tip);
+    return tip;
+  }
+  document.addEventListener('mousemove', e => {
+    const canvas = document.getElementById('monthlyDayChart');
+    if (!canvas || !canvas._monthlyDayData) return;
+    const { barRects } = canvas._monthlyDayData;
+    const rect = canvas.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      if (tip) tip.style.display = 'none';
+      return;
+    }
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+    let hit = null;
+    for (const br of barRects) {
+      if (br.data.count > 0 && mx >= br.x && mx <= br.x + br.w) {
+        hit = br.data; break;
+      }
+    }
+
+    const t = getTip();
+    if (!hit) { t.style.display = 'none'; canvas.style.cursor = 'default'; return; }
+    canvas.style.cursor = 'pointer';
+
+    const pipsCls = hit.pips >= 0 ? '#34d399' : '#f87171';
+    const wr = hit.count > 0 ? (hit.wins / hit.count * 100) : 0;
+    const wrCls = wr >= 56.7 ? '#34d399' : wr >= 50 ? '#fbbf24' : '#f87171';
+    const winPips = hit.trades.reduce((s, p) => s + ((p.pips || p.pnl_pips || 0) > 0 ? (p.pips || p.pnl_pips || 0) : 0), 0);
+    const lossPips = Math.abs(hit.trades.reduce((s, p) => s + ((p.pips || p.pnl_pips || 0) <= 0 ? (p.pips || p.pnl_pips || 0) : 0), 0));
+    const pf = lossPips > 0 ? winPips / lossPips : winPips > 0 ? 999 : 0;
+    const pfCls = pf >= 1.5 ? '#34d399' : pf >= 1.0 ? '#fbbf24' : '#f87171';
+    const avgPips = hit.count > 0 ? hit.pips / hit.count : 0;
+    let html = '<div style="font-weight:600;color:#93c5fd">' + hit.dateKey + ' (Day ' + hit.day + ')</div>';
+    html += '<div><span style="color:#9ca3af">Total P/L:</span> <span style="color:' + pipsCls + '">' + (hit.pips >= 0 ? '+' : '') + hit.pips.toFixed(1) + ' pips</span></div>';
+    if (hit.pln !== 0) {
+      const plnCls = hit.pln >= 0 ? '#34d399' : '#f87171';
+      html += '<div><span style="color:#9ca3af">Total PLN:</span> <span style="color:' + plnCls + '">' + (hit.pln >= 0 ? '+' : '') + hit.pln.toFixed(0) + ' ' + (_mt5Currency || 'PLN') + '</span></div>';
+    }
+    html += '<div><span style="color:#9ca3af">Trades:</span> ' + hit.count + ' (' + hit.wins + 'W / ' + (hit.count - hit.wins) + 'L)</div>';
+    html += '<div><span style="color:#9ca3af">Win Rate:</span> <span style="color:' + wrCls + '">' + wr.toFixed(1) + '%</span></div>';
+    html += '<div><span style="color:#9ca3af">Profit Factor:</span> <span style="color:' + pfCls + '">' + (pf >= 999 ? 'INF' : pf.toFixed(2)) + '</span></div>';
+    html += '<div><span style="color:#9ca3af">Avg P/L:</span> <span style="color:' + pipsCls + '">' + (avgPips >= 0 ? '+' : '') + avgPips.toFixed(1) + ' pips</span></div>';
+
+    t.innerHTML = html;
+    t.style.display = 'block';
+    let tx = e.pageX + 14, ty = e.pageY - 10;
+    if (tx + t.offsetWidth > window.innerWidth - 10) tx = e.pageX - t.offsetWidth - 14;
+    if (ty + t.offsetHeight > window.innerHeight + window.scrollY - 10) ty = e.pageY - t.offsetHeight - 10;
+    t.style.left = tx + 'px'; t.style.top = ty + 'px';
+  });
+  document.addEventListener('mouseleave', () => { if (tip) tip.style.display = 'none'; });
+})();
+
+// Interactive tooltip for chart
+(function setupChartTooltip() {
+  let tooltip = null;
+  function getTooltip() {
+    if (tooltip) return tooltip;
+    tooltip = document.createElement('div');
+    tooltip.id = 'plChartTooltip';
+    Object.assign(tooltip.style, {
+      position: 'absolute', pointerEvents: 'none', display: 'none', zIndex: '1000',
+      background: '#1f2937', color: '#f3f4f6', padding: '8px 12px', borderRadius: '8px',
+      fontSize: '12px', fontFamily: 'Consolas, Monaco, Courier New, monospace',
+      lineHeight: '1.5', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', whiteSpace: 'nowrap',
+      border: '1px solid #374151', maxWidth: '300px'
+    });
+    document.body.appendChild(tooltip);
+    return tooltip;
+  }
+
+  document.addEventListener('mousemove', e => {
+    const canvas = document.getElementById('plChart');
+    if (!canvas || !canvas._plChartData) return;
+    const { points, dotCoords, pad, W, H, hasPln, dpr } = canvas._plChartData;
+    const rect = canvas.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      if (tooltip) tooltip.style.display = 'none';
+      return;
+    }
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+    // Dot proximity detection
+    let best = null, bestDist = 12;
+    for (const dc of dotCoords) {
+      const dist = Math.hypot(mx - dc.x, my - dc.y);
+      if (dist < bestDist) { bestDist = dist; best = dc; }
+    }
+
+    const tip = getTooltip();
+    if (!best) { tip.style.display = 'none'; canvas.style.cursor = 'default'; return; }
+    canvas.style.cursor = 'pointer';
+    const p = points[best.i];
+    const pipsCls = p.pips >= 0 ? '#34d399' : '#f87171';
+    const cumCls = p.cumPips >= 0 ? '#60a5fa' : '#f87171';
+    const dateStr = p.date.toISOString().slice(0, 10) + ' ' + p.date.toISOString().slice(11, 16);
+    let html = `<div style="font-weight:600;color:#93c5fd">${p.symbol} ${p.direction.toUpperCase()}</div>`;
+    html += `<div style="color:#9ca3af">${dateStr} &middot; ${p.signal}</div>`;
+    html += `<div><span style="color:#9ca3af">Trade P/L:</span> <span style="color:${pipsCls}">${p.pips >= 0 ? '+' : ''}${p.pips.toFixed(1)} pips</span>`;
+    if (p.hasMt5) html += ` / <span style="color:#fbbf24">${p.mt5Pnl >= 0 ? '+' : ''}${p.mt5Pnl.toFixed(2)} ${_mt5Currency || 'PLN'}</span>`;
+    html += `</div>`;
+    html += `<div><span style="color:#9ca3af">Cumulative:</span> <span style="color:${cumCls}">${p.cumPips >= 0 ? '+' : ''}${p.cumPips.toFixed(1)} pips</span>`;
+    if (hasPln) html += ` / <span style="color:#fbbf24">${p.cumPln >= 0 ? '+' : ''}${p.cumPln.toFixed(0)} ${_mt5Currency || 'PLN'}</span>`;
+    html += `</div>`;
+    if (p.exit_reason) html += `<div><span style="color:#9ca3af">Exit:</span> ${p.exit_reason}</div>`;
+    if (p.tf) html += `<div><span style="color:#9ca3af">TF:</span> ${p.tf}</div>`;
+    html += `<div><span style="color:#9ca3af">${p.signal} running:</span> ${p.sigW}W/${p.sigL}L (${p.sigPips >= 0 ? '+' : ''}${p.sigPips.toFixed(1)}p)</div>`;
+    if (p.isTest) html += `<div style="color:#ef4444;font-weight:600">TEST TRADE</div>`;
+    if (p.isOpen) html += `<div style="color:#3b82f6;font-weight:600">OPEN POSITION</div>`;
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+    let tx = e.pageX + 14, ty = e.pageY - 10;
+    const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
+    if (tx + tipW > window.innerWidth - 10) tx = e.pageX - tipW - 14;
+    if (ty + tipH > window.innerHeight + window.scrollY - 10) ty = e.pageY - tipH - 10;
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
+  });
+
+  document.addEventListener('mouseleave', () => {
+    if (tooltip) tooltip.style.display = 'none';
+  });
+})();
+
+// ============================================================
+// CHART - Signal Weight Timeline (Kelly W)
+// ============================================================
+const WEIGHT_PALETTE = [
+  '#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#ec4899',
+  '#06b6d4','#f97316','#14b8a6','#6366f1','#84cc16','#e11d48',
+  '#0ea5e9','#a855f7','#10b981','#d946ef'
+];
+const KELLY_DEPLOY = new Date('2026-02-19T17:27:00Z');
+
+function drawWeightChart(trades) {
+  const canvas = document.getElementById('weightChart');
+  if (!canvas || !trades.length) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 32, H = 300;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  // Compute running weights per signal — mirrors backend Kelly v3 formula exactly
+  // Backend: live_performance_tracker.py KellyConfig defaults
+  const sorted = [...trades].filter(t => !t.isOpen).sort((a, b) => a.entryDate - b.entryDate);
+  const sigStats = {};
+  const MIN_K = 10, RAMP_K = 20, FLOOR = 0.10, UNKNOWN_W = 0.50;
+  const allPoints = [];
+  sorted.forEach(t => {
+    const key = `${t.symbol}:${t.direction.toUpperCase()}:${t.signal}`;
+    if (!sigStats[key]) sigStats[key] = { w:0, l:0, avgW:0, avgL:0, n:0, consL:0, prev:UNKNOWN_W };
+    const s = sigStats[key];
+    const prevW = s.prev;
+    s.n++;
+    if (t.pnl_pips > 0) {
+      s.w++;
+      s.avgW = (s.avgW * (s.w - 1) + t.pnl_pips) / s.w;
+      s.consL = 0;
+    } else {
+      s.l++;
+      s.avgL = (s.avgL * (s.l - 1) + t.pnl_pips) / s.l;
+      s.consL++;
+    }
+    let weight;
+    if (s.n < MIN_K) {
+      weight = UNKNOWN_W;
+    } else {
+      const wr = s.w / s.n;
+      const R = s.avgW / Math.max(Math.abs(s.avgL), 0.1);
+      const kelly = Math.max(0, (wr - (1 - wr) / R)) / 2;
+      const decay = Math.pow(0.5, s.consL / 3);
+      const raw = Math.max(kelly * decay, FLOOR);
+      if (s.n >= RAMP_K) {
+        weight = raw;
+      } else {
+        const blend = (s.n - MIN_K) / (RAMP_K - MIN_K);
+        weight = UNKNOWN_W * (1.0 - blend) + blend * raw;
+      }
+    }
+    s.prev = weight;
+    if (t.entryDate >= KELLY_DEPLOY) {
+      allPoints.push({
+        date: t.entryDate, key, weight, prevW, signal: t.signal,
+        symbol: t.symbol, direction: t.direction, pips: t.pnl_pips,
+        exit_reason: t.exit_reason, id: t.id, size: t.size,
+        wins: s.w, losses: s.l, n: s.n,
+        wr: s.n > 0 ? s.w / s.n * 100 : 0,
+        pf: s.l > 0 ? (s.avgW * s.w) / (Math.abs(s.avgL) * s.l) : s.w > 0 ? 999 : 0
+      });
+    }
+  });
+
+  if (!allPoints.length) {
+    ctx.fillStyle = '#6b7280'; ctx.font = '13px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('No trades since Kelly sizing deployment', W / 2, H / 2);
+    return;
+  }
+
+  // Color assignment
+  const keys = [...new Set(allPoints.map(p => p.key))];
+  const colorMap = {};
+  keys.forEach((k, i) => colorMap[k] = WEIGHT_PALETTE[i % WEIGHT_PALETTE.length]);
+
+  const pad = { top: 24, right: 20, bottom: 44, left: 50 };
+  const cw = W - pad.left - pad.right, ch = H - pad.top - pad.bottom;
+  const minDate = allPoints[0].date.getTime();
+  const maxDate = allPoints[allPoints.length - 1].date.getTime();
+  const dateRange = maxDate - minDate || 1;
+  function xP(d) { return pad.left + (d.getTime() - minDate) / dateRange * cw; }
+  function yP(v) { return pad.top + ch - (Math.max(0, Math.min(1, v)) * ch); }
+
+  // Background zones
+  ctx.fillStyle = 'rgba(239,68,68,0.04)';
+  ctx.fillRect(pad.left, yP(0.15), cw, yP(0) - yP(0.15));
+  ctx.fillStyle = 'rgba(234,179,8,0.04)';
+  ctx.fillRect(pad.left, yP(0.20), cw, yP(0.15) - yP(0.20));
+
+  // Grid
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+  for (const v of [0, 0.2, 0.4, 0.6, 0.8, 1.0]) {
+    const y = yP(v);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.fillStyle = '#9ca3af'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(1), pad.left - 8, y + 4);
+  }
+
+  // Threshold lines
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#22c55e80'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.left, yP(0.20)); ctx.lineTo(W - pad.right, yP(0.20)); ctx.stroke();
+  ctx.strokeStyle = '#ef444480';
+  ctx.beginPath(); ctx.moveTo(pad.left, yP(0.15)); ctx.lineTo(W - pad.right, yP(0.15)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Signal lines (stepped)
+  const byKey = {};
+  allPoints.forEach(p => { if (!byKey[p.key]) byKey[p.key] = []; byKey[p.key].push(p); });
+  for (const [key, pts] of Object.entries(byKey)) {
+    if (pts.length < 2) continue;
+    ctx.strokeStyle = colorMap[key];
+    ctx.lineWidth = pts.length >= 10 ? 2 : 1.5;
+    ctx.globalAlpha = pts.length >= 5 ? 0.7 : 0.35;
+    ctx.beginPath();
+    ctx.moveTo(xP(pts[0].date), yP(pts[0].weight));
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(xP(pts[i].date), yP(pts[i - 1].weight));
+      ctx.lineTo(xP(pts[i].date), yP(pts[i].weight));
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+  }
+
+  // Dots
+  const dotCoords = [];
+  allPoints.forEach((p, i) => {
+    const cx = xP(p.date), cy = yP(p.weight);
+    ctx.fillStyle = colorMap[p.key];
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+    dotCoords.push({ x: cx, y: cy, i });
+  });
+  canvas._weightData = { points: allPoints, dotCoords, colorMap, dpr };
+
+  // Date labels
+  ctx.fillStyle = '#6b7280'; ctx.font = '10px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+  const nLabels = Math.min(10, Math.ceil(dateRange / 86400000) + 1);
+  for (let i = 0; i < nLabels; i++) {
+    const t = minDate + (dateRange / (nLabels - 1 || 1)) * i;
+    const dt = new Date(t);
+    const x = xP(dt);
+    if (x > pad.left + 20 && x < W - pad.right - 20)
+      ctx.fillText(`${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`, x, H - pad.bottom + 16);
+  }
+
+  // Y-axis label
+  ctx.save(); ctx.translate(14, H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#6b7280'; ctx.font = '11px Consolas,Monaco,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('Kelly Weight', 0, 0); ctx.restore();
+
+  // Legend
+  const leg = document.getElementById('weightLegend');
+  if (leg) {
+    leg.innerHTML = keys.map(k => {
+      const pts = byKey[k] || [];
+      const last = pts[pts.length - 1];
+      const w = last ? last.weight.toFixed(2) : '-';
+      const [sym, dir] = k.split(':');
+      const sig = k.split(':').slice(2).join(':');
+      return `<span style="color:${colorMap[k]};white-space:nowrap" title="${k} (${pts.length} trades)">` +
+        `● ${sym} ${dir[0]} ${sig} <span style="color:#6b7280">${w} (${pts.length})</span></span>`;
+    }).join('');
+  }
+}
+
+// Weight chart tooltip
+(function setupWeightTooltip() {
+  let tip = null;
+  function getTip() {
+    if (tip) return tip;
+    tip = document.createElement('div');
+    Object.assign(tip.style, {
+      position: 'absolute', pointerEvents: 'none', display: 'none', zIndex: '1000',
+      background: '#1f2937', color: '#f3f4f6', padding: '8px 12px', borderRadius: '8px',
+      fontSize: '12px', fontFamily: 'Consolas,Monaco,monospace', lineHeight: '1.5',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)', whiteSpace: 'nowrap', border: '1px solid #374151'
+    });
+    document.body.appendChild(tip);
+    return tip;
+  }
+  document.addEventListener('mousemove', e => {
+    const canvas = document.getElementById('weightChart');
+    if (!canvas || !canvas._weightData) return;
+    const { points, dotCoords } = canvas._weightData;
+    const rect = canvas.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      if (tip) tip.style.display = 'none';
+      return;
+    }
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let closest = null, minDist = 12;
+    for (const d of dotCoords) {
+      const dist = Math.hypot(d.x - mx, d.y - my);
+      if (dist < minDist) { minDist = dist; closest = d; }
+    }
+    const t = getTip();
+    if (!closest) { t.style.display = 'none'; canvas.style.cursor = 'default'; return; }
+    canvas.style.cursor = 'pointer';
+    const p = points[closest.i];
+    const delta = p.weight - p.prevW;
+    const deltaStr = delta >= 0 ? '+' + delta.toFixed(3) : delta.toFixed(3);
+    const deltaColor = delta >= 0 ? '#34d399' : '#f87171';
+    const dirColor = p.direction === 'long' ? '#34d399' : '#f87171';
+    const pipsColor = p.pips >= 0 ? '#34d399' : '#f87171';
+    const dt = p.date;
+    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+    let html = `<div style="font-weight:600;color:#93c5fd">${p.symbol} <span style="color:${dirColor}">${p.direction.toUpperCase()}</span> ${p.signal}</div>`;
+    html += `<div><span style="color:#9ca3af">W:</span> ${p.prevW.toFixed(3)} → <strong>${p.weight.toFixed(3)}</strong> <span style="color:${deltaColor}">(${deltaStr})</span></div>`;
+    html += `<div><span style="color:#9ca3af">Trade #${p.id}:</span> <span style="color:${pipsColor}">${p.pips >= 0 ? '+' : ''}${p.pips.toFixed(1)} pips</span> (${p.exit_reason}) <span style="color:#6b7280">Lots: ${p.size != null ? p.size.toFixed(2) : '-'}</span></div>`;
+    html += `<div><span style="color:#9ca3af">Record:</span> <span style="color:#34d399">${p.wins}W</span> <span style="color:#f87171">${p.losses}L</span> (${p.wr.toFixed(0)}%) PF: ${p.pf >= 999 ? 'INF' : p.pf.toFixed(2)}</div>`;
+    html += `<div style="color:#6b7280;font-size:10px;margin-top:2px">${dateStr} UTC</div>`;
+    t.innerHTML = html;
+    t.style.display = 'block';
+    let tx = e.pageX + 14, ty = e.pageY - 10;
+    if (tx + t.offsetWidth > window.innerWidth - 10) tx = e.pageX - t.offsetWidth - 14;
+    if (ty + t.offsetHeight > window.innerHeight + window.scrollY - 10) ty = e.pageY - t.offsetHeight - 10;
+    t.style.left = tx + 'px'; t.style.top = ty + 'px';
+  });
+  document.addEventListener('mouseleave', () => { if (tip) tip.style.display = 'none'; });
+})();
+
+// Redraw on resize
+window.addEventListener('resize', () => {
+  if (filteredTrades.length) renderApp();
+});
+
+// ============================================================
+// INIT
+// ============================================================
+refreshData();
+refreshTimer = setInterval(refreshData, REFRESH_INTERVAL);
+</script>
+</body>
+</html>

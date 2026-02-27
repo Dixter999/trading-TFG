@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Analytics</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    background: #f5f5f5;
+    color: #1f1f1f;
+    line-height: 1.5;
+    padding: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  h1 { font-size: 18px; font-weight: 600; color: #1f1f1f; }
+  h2 { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+  h3 { font-size: 13px; font-weight: 600; color: #4b5563; margin-bottom: 8px; }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; padding: 12px 16px;
+    background: #ffffff; border-radius: 8px; border: 1px solid #e0e0e0;
+  }
+  .header p { color: #6b7280; font-size: 12px; }
+  .header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; }
+
+  .nav-bar {
+    display: flex; justify-content: center; gap: 8px; margin-bottom: 16px;
+  }
+  .nav-bar a {
+    color: #4b5563; text-decoration: none; font-size: 12px;
+    padding: 6px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
+    background: #ffffff; transition: all 0.2s;
+  }
+  .nav-bar a:hover { background: #f3f4f6; color: #1f1f1f; }
+  .nav-bar a.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+  .section { margin-bottom: 16px; }
+
+  .card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+  }
+  .card-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .card-value { font-size: 22px; font-weight: 700; }
+  .card-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  .yellow { color: #d97706; }
+  .dim { color: #9ca3af; }
+  .mono { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #ffffff;
+  }
+  th {
+    background: #f9fafb;
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #4b5563;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { background: #f3f4f6; }
+  th .sort-arrow { font-size: 10px; margin-left: 2px; color: #9ca3af; }
+  th .sort-arrow.active { color: #3b82f6; }
+  td {
+    padding: 8px 8px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  tr:hover { background: #f9fafb; }
+  .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e0e0e0; }
+
+  .dir-long { color: #16a34a; font-weight: 600; }
+  .dir-short { color: #dc2626; font-weight: 600; }
+
+  .footer { text-align: center; color: #9ca3af; font-size: 11px; margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+
+  .loading { text-align: center; padding: 60px 20px; }
+  .loading .spinner {
+    display: inline-block; width: 24px; height: 24px;
+    border: 2px solid #e5e7eb; border-top-color: #3b82f6;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg {
+    text-align: center; padding: 40px 20px; color: #dc2626;
+    background: #ffffff; border-radius: 8px; border: 1px solid #fca5a5;
+  }
+  .refresh-info { font-size: 11px; color: #9ca3af; }
+
+  /* Heatmap */
+  .heatmap-row {
+    display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px;
+    padding-bottom: 10px; border-bottom: 1px solid #f3f4f6;
+  }
+  .heatmap-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .heatmap-symbol {
+    width: 70px; min-width: 70px; font-weight: 700; font-size: 12px;
+    color: #374151; padding-top: 4px;
+  }
+  .heatmap-tiles { display: flex; flex-wrap: wrap; gap: 4px; }
+  .heatmap-tile {
+    border-radius: 6px; padding: 4px 8px; font-size: 11px;
+    cursor: pointer; position: relative; max-width: 110px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 80px; text-align: center; font-weight: 600;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .heatmap-tile:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+  .tile-green { background: #dcfce7; color: #166534; }
+  .tile-yellow { background: #fef3c7; color: #92400e; }
+  .tile-red { background: #fee2e2; color: #991b1b; }
+  .tile-gray { background: #f3f4f6; color: #9ca3af; }
+
+  /* Tooltip */
+  .tile-tooltip {
+    display: none; position: absolute; z-index: 100;
+    background: #1f2937; color: #f3f4f6; padding: 8px 12px;
+    border-radius: 8px; font-size: 11px; line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3); white-space: nowrap;
+    border: 1px solid #374151; pointer-events: none;
+    left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+  }
+  .heatmap-tile:hover .tile-tooltip { display: block; }
+
+  /* Weight bar */
+  .weight-bar-track {
+    width: 60px; height: 8px; background: #f3f4f6; border-radius: 4px;
+    overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 4px;
+  }
+  .weight-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+  /* Margin section */
+  .margin-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+  @media (max-width: 900px) { .margin-grid { grid-template-columns: 1fr; } }
+  .donut-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .stacked-bar-track { width: 100%; height: 28px; background: #f3f4f6; border-radius: 6px; overflow: hidden; display: flex; }
+  .stacked-bar-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; min-width: 1px; }
+  .dir-bar-track { width: 100%; height: 22px; background: #f3f4f6; border-radius: 4px; overflow: hidden; display: flex; margin-top: 8px; }
+  .dir-bar-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; }
+  .metric-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .metric-label { color: #6b7280; min-width: 120px; }
+  .metric-value { font-weight: 600; }
+
+  /* Lifecycle filter buttons */
+  .lifecycle-filter-btn {
+    font-family: inherit; font-size: 11px; padding: 4px 10px;
+    border: 1px solid #e0e0e0; border-radius: 4px; background: #fff;
+    cursor: pointer; color: #4b5563; transition: all 0.15s;
+  }
+  .lifecycle-filter-btn:hover { background: #f3f4f6; }
+  .lifecycle-filter-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Signal Analytics</h1>
+    <p>Signal Lifecycle &middot; Kelly Sizing &middot; Margin Utilization</p>
+  </div>
+  <div class="header-right">
+    <span class="refresh-info" id="refreshInfo"></span>
+  </div>
+</div>
+
+<div class="nav-bar">
+  <a href="index.html">Main Dashboard</a>
+  <a href="dashboard.html">Advanced Dashboard</a>
+  <a href="trades.html">Trade Analytics</a>
+  <a href="signal-analytics.html" class="active">Signal Analytics</a>
+</div>
+
+<div id="app">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p style="margin-top:12px;color:#6b7280;font-size:13px">Loading signal data...</p>
+  </div>
+</div>
+
+<div class="footer">Signal Analytics &mdash; Hybrid V4 Paper Trading</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const REFRESH_INTERVAL = 60000;
+const SYMBOLS = ['EURUSD','GBPUSD','USDJPY','EURJPY','USDCAD','EURCAD','USDCHF','EURGBP'];
+const SYMBOL_COLORS = {
+  EURUSD: '#3b82f6', GBPUSD: '#ef4444', USDJPY: '#22c55e', EURJPY: '#f59e0b',
+  USDCAD: '#8b5cf6', EURCAD: '#ec4899', USDCHF: '#06b6d4', EURGBP: '#f97316'
+};
+let approvedModels = [];
+let signalWeights = {};
+let positions = [];
+let mt5Account = null;
+let symbolMargins = {};  // { EURUSD: 3666.67, ... } from DB
+let lifecycleSummary = null;
+let lastRefresh = null;
+let countdown = REFRESH_INTERVAL / 1000;
+let countdownTimer = null;
+let sortCol = null;
+let sortAsc = true;
+
+// ============================================================
+// DATA FETCHING
+// ============================================================
+async function fetchApprovedModels() {
+  try {
+    const resp = await fetch('/api/signals/approved-models', { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    approvedModels = json.data || [];
+  } catch (e) { console.warn('Failed to fetch approved models:', e.message); }
+}
+
+async function fetchSignalWeights() {
+  try {
+    const resp = await fetch('/api/paper-trading/signal-weights', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    signalWeights = json.data || {};
+  } catch (e) { console.warn('Failed to fetch signal weights:', e.message); }
+}
+
+async function fetchPositions() {
+  try {
+    const resp = await fetch('/api/paper-trading/positions', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    positions = json.data || [];
+  } catch (e) { console.warn('Failed to fetch positions:', e.message); }
+}
+
+async function fetchMT5Account() {
+  // TFG: No MT5 broker connection
+}
+
+async function fetchLifecycleSummary() {
+  try {
+    const resp = await fetch('/api/signals/lifecycle-summary', { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    lifecycleSummary = json.data || [];
+  } catch (e) { console.warn('Failed to fetch lifecycle summary:', e.message); }
+}
+let lifecycleFilter = 'all'; // all, active, retired
+
+async function fetchSymbolConfigs() {
+  try {
+    const resp = await fetch('/api/position-sizing/symbols', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    const symbols = json.data || [];
+    symbolMargins = {};
+    for (const s of symbols) {
+      symbolMargins[s.symbol] = s.marginPerLot;
+    }
+  } catch (e) { console.warn('Failed to fetch symbol configs:', e.message); }
+}
+
+async function refreshData() {
+  try {
+    await Promise.all([fetchApprovedModels(), fetchSignalWeights(), fetchPositions(), fetchMT5Account(), fetchSymbolConfigs(), fetchLifecycleSummary()]);
+    lastRefresh = new Date();
+    renderAll();
+  } catch (err) {
+    document.getElementById('app').innerHTML = `
+      <div class="error-msg">
+        <h3>Failed to load signal data</h3>
+        <p style="margin-top:8px">${err.message}</p>
+        <p style="margin-top:12px;color:#6b7280;font-size:12px">Retrying in ${REFRESH_INTERVAL/1000}s...</p>
+      </div>`;
+  }
+  countdown = REFRESH_INTERVAL / 1000;
+  updateRefreshInfo();
+}
+
+function updateRefreshInfo() {
+  const el = document.getElementById('refreshInfo');
+  if (!el) return;
+  const lastStr = lastRefresh
+    ? `Last updated: ${lastRefresh.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC`
+    : '';
+  el.textContent = `${lastStr} | Next refresh: ${countdown}s`;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function abbreviate(name) {
+  return name.replace(/_long$/i, '').replace(/_short$/i, '').substring(0, 8);
+}
+
+function buildKey(symbol, direction, signalName) {
+  return `${symbol.toUpperCase()}:${direction.toUpperCase()}:${signalName}`;
+}
+
+function mergeData() {
+  // Build lifecycle lookup by signal_id (e.g. "eurcad_long_EMA_RSI_long_H2")
+  const lcMap = {};
+  if (Array.isArray(lifecycleSummary)) {
+    for (const lc of lifecycleSummary) {
+      // Key by signalId for exact match, but also by constructed key as fallback
+      if (lc.signalId) lcMap[lc.signalId.toLowerCase()] = lc;
+      const k = `${(lc.symbol||'').toLowerCase()}_${(lc.direction||'').toLowerCase()}_${lc.signalName||''}_${(lc.timeframe||'').toUpperCase()}`;
+      lcMap[k] = lc;
+    }
+  }
+
+  // Start from lifecycle data as base (209 signals), enrich with approved_models + weights
+  const approvedMap = {};
+  for (const m of approvedModels) {
+    const k = `${(m.symbol||'').toLowerCase()}_${(m.direction||'').toLowerCase()}_${m.signalName||''}_${(m.timeframe||'').toUpperCase()}`;
+    approvedMap[k] = m;
+  }
+
+  // Use lifecycle as primary source if available, else fall back to approved_models
+  const sources = Array.isArray(lifecycleSummary) && lifecycleSummary.length > 0
+    ? lifecycleSummary
+    : approvedModels.map(m => ({
+        symbol: (m.symbol||'').toUpperCase(),
+        direction: (m.direction||'').toUpperCase(),
+        signalName: m.signalName || '',
+        timeframe: m.timeframe || '',
+        state: 'active',
+        phase5Pf: Number(m.phase5Pf) || 0,
+        phase5Wr: Number(m.phase5Wr) || 0,
+        lastStateChange: null,
+      }));
+
+  return sources.map(s => {
+    const sym = (s.symbol || '').toUpperCase();
+    const dir = (s.direction || '').toUpperCase();
+    const sig = s.signalName || '';
+    const tf = (s.timeframe || '').toUpperCase();
+    const key = buildKey(sym, dir, sig);
+    const w = signalWeights[key] || null;
+    const wins = w ? Number(w.wins) || 0 : 0;
+    const losses = w ? Number(w.losses) || 0 : 0;
+    const total = wins + losses;
+    const consLosses = w ? Number(w.consecutive_losses) || 0 : 0;
+    const weight = w ? Number(w.weight) : null;
+
+    // Phase5 metrics: prefer lifecycle values, fallback to approved_models
+    const amKey = `${sym.toLowerCase()}_${dir.toLowerCase()}_${sig}_${tf}`;
+    const am = approvedMap[amKey];
+    const p5pf = s.phase5Pf != null ? Number(s.phase5Pf) : (am ? Number(am.phase5Pf) || 0 : 0);
+    const p5wr = s.phase5Wr != null ? Number(s.phase5Wr) : (am ? Number(am.phase5Wr) || 0 : 0);
+
+    return {
+      symbol: sym, signalName: sig, direction: dir, timeframe: tf,
+      state: s.state || 'active',
+      lastStateChange: s.lastStateChange || null,
+      phase5Pf: p5pf, phase5Wr: p5wr,
+      key, wins, losses, total, consLosses, weight,
+      hasWeightData: w !== null,
+      rawKelly: w ? Number(w.raw_kelly) || 0 : null,
+      decayFactor: w ? Number(w.decay_factor) || 1 : null,
+      blendPhase: w ? (w.blend_phase || 'No Trades') : 'No Trades',
+      winRate: w ? Number(w.win_rate) || null : null,
+      rewardRatio: w ? Number(w.reward_ratio) || null : null,
+    };
+  });
+}
+
+function getTileClass(sig) {
+  if (!sig.hasWeightData || sig.total === 0) return 'tile-gray';
+  if (sig.consLosses >= 5) return 'tile-red';
+  if (sig.total >= 10 && sig.total > 0 && (sig.wins / sig.total) < 0.40) return 'tile-red';
+  if (sig.weight !== null && sig.weight < 0.10) return 'tile-red';
+  if (sig.consLosses >= 3) return 'tile-yellow';
+  if (sig.weight !== null && sig.weight >= 0.10 && sig.weight < 0.15) return 'tile-yellow';
+  if (sig.weight !== null && sig.weight >= 0.15) return 'tile-green';
+  if (sig.total < 10) return 'tile-green';
+  return 'tile-green';
+}
+
+function getTileLabel(sig) {
+  if (!sig.hasWeightData || sig.total === 0) return 'No Data';
+  const cls = getTileClass(sig);
+  if (cls === 'tile-red') return 'Critical';
+  if (cls === 'tile-yellow') return 'Degraded';
+  return 'Performing';
+}
+
+function getKellyFields(sig) {
+  // Use pre-computed fields from Python via API (single source of truth)
+  if (!sig.hasWeightData || sig.total === 0) {
+    return { W: null, R: null, rawKelly: null, decay: null, blendPhase: 'No Trades', finalWeight: 1.0 };
+  }
+  return {
+    W: sig.winRate,
+    R: sig.rewardRatio,
+    rawKelly: sig.rawKelly,
+    decay: sig.decayFactor,
+    blendPhase: sig.blendPhase,
+    finalWeight: sig.weight != null ? sig.weight : 1.0,
+  };
+}
+
+function num(v) { return v != null ? Number(v) : null; }
+function fmtNum(n, d) { const v = num(n); return v != null && !isNaN(v) ? v.toFixed(d) : '\u2014'; }
+
+function timeAgo(dateStr) {
+  if (!dateStr) return 'Never';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < 0) return 'Just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function renderAll() {
+  const merged = mergeData();
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    ${renderMarginSection()}
+    ${renderHeatmap(merged)}
+    ${renderSignalTable(merged)}
+  `;
+  attachSortHandlers(merged);
+}
+
+// --- Section 1: Heatmap ---
+function renderHeatmap(merged) {
+  const bySymbol = {};
+  SYMBOLS.forEach(s => bySymbol[s] = []);
+  merged.forEach(m => {
+    if (bySymbol[m.symbol]) bySymbol[m.symbol].push(m);
+  });
+
+  const rows = SYMBOLS.map(sym => {
+    const sigs = bySymbol[sym] || [];
+    if (sigs.length === 0) {
+      return `<div class="heatmap-row">
+        <div class="heatmap-symbol">${sym}</div>
+        <div class="heatmap-tiles"><span class="dim" style="font-size:11px;padding:4px">No approved signals</span></div>
+      </div>`;
+    }
+    const tiles = sigs.map(sig => {
+      const cls = getTileClass(sig);
+      const arrow = sig.direction === 'LONG' ? '\u25B2' : '\u25BC';
+      const abbr = abbreviate(sig.signalName);
+      const label = getTileLabel(sig);
+      const wr = sig.total > 0 ? ((sig.wins / sig.total) * 100).toFixed(1) : '-';
+      const wStr = sig.weight != null ? sig.weight.toFixed(2) : '-';
+      return `<div class="heatmap-tile ${cls}" title="">
+        ${abbr} ${arrow}
+        <div class="tile-tooltip">
+          <div style="font-weight:600;margin-bottom:2px">${sig.signalName} ${sig.direction} (${sig.timeframe})</div>
+          <div>Phase5: PF ${fmtNum(sig.phase5Pf, 2)} | WR ${fmtNum(sig.phase5Wr, 1)}%</div>
+          <div>Live: ${sig.wins}W / ${sig.losses}L${sig.total > 0 ? ` (${wr}%)` : ''}</div>
+          <div>Kelly W: ${wStr} | ConsL: ${sig.consLosses}</div>
+          <div style="color:${cls === 'tile-green' ? '#34d399' : cls === 'tile-yellow' ? '#fbbf24' : cls === 'tile-red' ? '#f87171' : '#9ca3af'};font-weight:600;margin-top:2px">${label}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="heatmap-row">
+      <div class="heatmap-symbol">${sym}</div>
+      <div class="heatmap-tiles">${tiles}</div>
+    </div>`;
+  }).join('');
+
+  const totalSignals = merged.length;
+  const performing = merged.filter(m => getTileClass(m) === 'tile-green').length;
+  const degraded = merged.filter(m => getTileClass(m) === 'tile-yellow').length;
+  const critical = merged.filter(m => getTileClass(m) === 'tile-red').length;
+  const noData = merged.filter(m => getTileClass(m) === 'tile-gray').length;
+
+  return `<div class="section">
+    <h2>Signal Lifecycle Heatmap</h2>
+    <div class="card">
+      <div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;flex-wrap:wrap">
+        <span><span class="badge badge-green">${performing}</span> Performing</span>
+        <span><span class="badge badge-yellow">${degraded}</span> Degraded</span>
+        <span><span class="badge badge-red">${critical}</span> Critical</span>
+        <span style="color:#9ca3af">${noData} No Data</span>
+        <span class="dim">${totalSignals} total signals</span>
+      </div>
+      ${rows}
+    </div>
+  </div>`;
+}
+
+// --- Section 2: Unified Signal Table (Lifecycle + Kelly) ---
+function renderSignalTable(merged) {
+  const data = merged.map(m => {
+    const k = getKellyFields(m);
+    return { ...m, ...k };
+  });
+
+  // Apply lifecycle filter
+  const filtered = lifecycleFilter === 'all' ? data
+    : data.filter(d => d.state === lifecycleFilter);
+
+  // Apply sort
+  if (sortCol !== null) {
+    filtered.sort((a, b) => {
+      let va = a[sortCol], vb = b[sortCol];
+      if (va == null) va = sortAsc ? Infinity : -Infinity;
+      if (vb == null) vb = sortAsc ? Infinity : -Infinity;
+      if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+      return sortAsc ? va - vb : vb - va;
+    });
+  }
+
+  // State counts for filter buttons
+  const stateCount = {};
+  data.forEach(d => { stateCount[d.state] = (stateCount[d.state] || 0) + 1; });
+  const states = Object.keys(stateCount).sort();
+
+  const filterBtns = [
+    `<button class="lifecycle-filter-btn ${lifecycleFilter === 'all' ? 'active' : ''}" onclick="lifecycleFilter='all';renderAll()">All (${data.length})</button>`,
+    ...states.map(s =>
+      `<button class="lifecycle-filter-btn ${lifecycleFilter === s ? 'active' : ''}" onclick="lifecycleFilter='${s}';renderAll()">${s.charAt(0).toUpperCase() + s.slice(1)} (${stateCount[s]})</button>`
+    )
+  ].join(' ');
+
+  const cols = [
+    { key: 'symbol', label: 'Symbol', align: 'left' },
+    { key: 'signalName', label: 'Signal', align: 'left' },
+    { key: 'timeframe', label: 'TF', align: 'left' },
+    { key: 'direction', label: 'Dir', align: 'left' },
+    { key: 'state', label: 'State', align: 'left' },
+    { key: 'total', label: 'Trades', align: 'right' },
+    { key: 'W', label: 'W%', align: 'right' },
+    { key: 'decay', label: 'Decay', align: 'right' },
+    { key: 'blendPhase', label: 'Blend', align: 'left' },
+    { key: 'finalWeight', label: 'Weight', align: 'right' },
+    { key: 'phase5Pf', label: 'PF', align: 'right' },
+    { key: 'phase5Wr', label: 'P5 WR', align: 'right' },
+  ];
+
+  const thHtml = cols.map(c => {
+    const arrow = sortCol === c.key ? (sortAsc ? '\u25B2' : '\u25BC') : '';
+    const arrowCls = sortCol === c.key ? 'active' : '';
+    return `<th style="text-align:${c.align}" data-col="${c.key}">${c.label} <span class="sort-arrow ${arrowCls}">${arrow}</span></th>`;
+  }).join('');
+
+  const stateBadge = (state) => {
+    const map = {
+      active: 'badge-green', degraded: 'badge-yellow', quarantined: 'badge-red',
+      retired: 'badge-red', discovered: 'badge-blue', training: 'badge-blue', retraining: 'badge-yellow',
+    };
+    return `<span class="badge ${map[state] || 'badge-blue'}" style="font-size:9px">${state}</span>`;
+  };
+
+  const rows = filtered.map(d => {
+    const dirCls = d.direction === 'LONG' ? 'dir-long' : 'dir-short';
+    const tradesStr = d.total > 0
+      ? `<span class="green">${d.wins}</span>/<span class="red">${d.losses}</span>`
+      : '\u2014';
+    const wrStr = d.W != null ? `${(d.W * 100).toFixed(1)}%` : '\u2014';
+    const wrCls = d.W != null ? (d.W * 100 >= 56.7 ? 'green' : d.W * 100 >= 50 ? 'yellow' : 'red') : 'dim';
+    const decayStr = d.decay != null ? d.decay.toFixed(2) : '\u2014';
+    const decayCls = d.decay != null ? (d.decay >= 0.8 ? '' : d.decay >= 0.5 ? 'yellow' : 'red') : 'dim';
+    const fw = d.finalWeight;
+    const fwStr = fw != null ? fw.toFixed(3) : '\u2014';
+    const fwBarColor = fw >= 0.5 ? '#16a34a' : fw >= 0.2 ? '#22c55e' : fw >= 0.15 ? '#d97706' : '#dc2626';
+    const fwBarWidth = Math.min(100, (fw / 1.0) * 100);
+    const pfStr = d.phase5Pf != null ? d.phase5Pf.toFixed(2) : '\u2014';
+    const pfCls = d.phase5Pf >= 2.0 ? 'green' : d.phase5Pf >= 1.5 ? 'green' : d.phase5Pf >= 1.2 ? 'yellow' : 'red';
+    const p5wrStr = d.phase5Wr != null ? `${Number(d.phase5Wr).toFixed(1)}%` : '\u2014';
+    const p5wrCls = d.phase5Wr >= 50 ? 'green' : d.phase5Wr >= 40 ? 'yellow' : 'red';
+
+    return `<tr>
+      <td style="font-weight:600">${d.symbol}</td>
+      <td>${d.signalName}</td>
+      <td>${d.timeframe}</td>
+      <td><span class="${dirCls}">${d.direction}</span></td>
+      <td>${stateBadge(d.state)}</td>
+      <td style="text-align:right">${tradesStr}</td>
+      <td style="text-align:right"><span class="${wrCls}">${wrStr}</span></td>
+      <td style="text-align:right"><span class="${decayCls}">${decayStr}</span></td>
+      <td><span class="badge badge-blue" style="font-size:9px">${d.blendPhase}</span></td>
+      <td style="text-align:right">
+        ${fwStr}
+        <div class="weight-bar-track">
+          <div class="weight-bar-fill" style="width:${fwBarWidth}%;background:${fwBarColor}"></div>
+        </div>
+      </td>
+      <td style="text-align:right"><span class="${pfCls}">${pfStr}</span></td>
+      <td style="text-align:right"><span class="${p5wrCls}">${p5wrStr}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="section">
+    <h2>Signal Lifecycle &amp; Kelly Sizing</h2>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${filterBtns}</div>
+    <div class="table-wrap">
+      <table id="kellyTable">
+        <thead><tr>${thHtml}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:6px">
+      ${filtered.length} of ${data.length} signals | Click column headers to sort
+    </div>
+  </div>`;
+}
+
+function attachSortHandlers(merged) {
+  const table = document.getElementById('kellyTable');
+  if (!table) return;
+  table.querySelectorAll('th').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.getAttribute('data-col');
+      if (sortCol === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortCol = col;
+        sortAsc = true;
+      }
+      renderAll();
+    });
+  });
+}
+
+// --- Section 3: Margin ---
+function renderMarginSection() {
+  const equity = mt5Account ? Number(mt5Account.equity) || 0 : 0;
+  const balance = mt5Account ? Number(mt5Account.balance) || 0 : 0;
+  const currency = mt5Account ? mt5Account.currency : 'PLN';
+
+  // Calculate margin per position using DB-provided per-symbol margin
+  const posData = positions.map(p => {
+    const lots = Number(p.lots) || 0;
+    const sym = (p.symbol || '').toUpperCase();
+    const perLot = symbolMargins[sym] || (100000 / 25);  // fallback: 100k / ref leverage 25
+    const marginEst = lots * perLot;
+    const pnlPips = p.pnl_pips != null ? Number(p.pnl_pips) : null;
+    return {
+      symbol: (p.symbol || '').toUpperCase(),
+      direction: (p.direction || '').toUpperCase(),
+      lots,
+      entryPrice: p.entry_price,
+      currentPrice: p.current_price,
+      pnlPips,
+      entryModel: p.entry_model,
+      timeframe: p.signal_timeframe,
+      ticket: p.ticket,
+      marginEst
+    };
+  });
+
+  const totalMargin = posData.reduce((s, p) => s + p.marginEst, 0);
+  const marginPct = equity > 0 ? (totalMargin / equity) * 100 : 0;
+
+  // Donut SVG
+  const donutColor = marginPct < 50 ? '#16a34a' : marginPct < 75 ? '#d97706' : '#dc2626';
+  const donutBg = '#f3f4f6';
+  const radius = 70;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (Math.min(marginPct, 100) / 100) * circumference;
+
+  const donutSvg = `<svg width="180" height="180" viewBox="0 0 180 180">
+    <circle cx="90" cy="90" r="${radius}" fill="none" stroke="${donutBg}" stroke-width="16"/>
+    <circle cx="90" cy="90" r="${radius}" fill="none" stroke="${donutColor}" stroke-width="16"
+      stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
+      stroke-linecap="round" transform="rotate(-90 90 90)" style="transition: stroke-dashoffset 0.5s"/>
+    <text x="90" y="82" text-anchor="middle" font-size="22" font-weight="700" fill="${donutColor}" font-family="Consolas,Monaco,monospace">${marginPct.toFixed(1)}%</text>
+    <text x="90" y="102" text-anchor="middle" font-size="11" fill="#6b7280" font-family="Consolas,Monaco,monospace">margin used</text>
+  </svg>`;
+
+  // Diversification score
+  const marginBySymbol = {};
+  let longMargin = 0, shortMargin = 0;
+  posData.forEach(p => {
+    marginBySymbol[p.symbol] = (marginBySymbol[p.symbol] || 0) + p.marginEst;
+    if (p.direction === 'LONG') longMargin += p.marginEst;
+    else shortMargin += p.marginEst;
+  });
+  let divScore = 100;
+  if (totalMargin > 0) {
+    Object.values(marginBySymbol).forEach(m => {
+      const pct = m / totalMargin;
+      if (pct > 0.25) divScore -= (pct - 0.25) * 200;
+    });
+    const dirMax = Math.max(longMargin, shortMargin);
+    const dirPct = dirMax / totalMargin;
+    if (dirPct > 0.60) divScore -= (dirPct - 0.60) * 150;
+  }
+  divScore = Math.max(0, Math.min(100, Math.round(divScore)));
+  const divColor = divScore >= 70 ? '#16a34a' : divScore >= 40 ? '#d97706' : '#dc2626';
+
+  // Stacked bar by symbol
+  const symbolSegs = Object.entries(marginBySymbol).map(([sym, m]) => {
+    const pct = totalMargin > 0 ? (m / totalMargin) * 100 : 0;
+    const color = SYMBOL_COLORS[sym] || '#6b7280';
+    return `<div class="stacked-bar-seg" style="width:${Math.max(pct, 2)}%;background:${color}" title="${sym}: ${m.toFixed(0)} ${currency} (${pct.toFixed(1)}%)">${pct >= 8 ? sym : ''}</div>`;
+  }).join('');
+
+  // Direction bar
+  const longPct = totalMargin > 0 ? (longMargin / totalMargin) * 100 : 50;
+  const shortPct = totalMargin > 0 ? (shortMargin / totalMargin) * 100 : 50;
+  const dirBar = `<div class="dir-bar-track">
+    <div class="dir-bar-seg" style="width:${Math.max(longPct, 1)}%;background:#16a34a">LONG ${longPct.toFixed(0)}%</div>
+    <div class="dir-bar-seg" style="width:${Math.max(shortPct, 1)}%;background:#dc2626">SHORT ${shortPct.toFixed(0)}%</div>
+  </div>`;
+
+  // Mini-table
+  const posRows = posData.length > 0 ? posData.map(p => {
+    const dirCls = p.direction === 'LONG' ? 'dir-long' : 'dir-short';
+    const pnlCls = p.pnlPips >= 0 ? 'green' : 'red';
+    const pnlStr = p.pnlPips != null ? `${p.pnlPips >= 0 ? '+' : ''}${p.pnlPips.toFixed(1)}` : '\u2014';
+    return `<tr>
+      <td>${p.symbol}</td>
+      <td><span class="${dirCls}">${p.direction}</span></td>
+      <td style="text-align:right">${p.lots.toFixed(2)}</td>
+      <td style="text-align:right">${p.entryPrice}</td>
+      <td style="text-align:right">${p.currentPrice || '\u2014'}</td>
+      <td style="text-align:right"><span class="${pnlCls}">${pnlStr}</span></td>
+      <td style="text-align:right">${p.marginEst.toFixed(0)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:20px">No open positions</td></tr>';
+
+  // Stacked bar legend
+  const legendHtml = Object.entries(marginBySymbol).map(([sym, m]) => {
+    const pct = totalMargin > 0 ? (m / totalMargin) * 100 : 0;
+    return `<span style="font-size:11px;margin-right:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${SYMBOL_COLORS[sym] || '#6b7280'};vertical-align:middle;margin-right:3px"></span>${sym} ${pct.toFixed(1)}%</span>`;
+  }).join('');
+
+  return `<div class="section">
+    <h2>Margin Utilization</h2>
+    <div class="card">
+      <div class="margin-grid">
+        <div class="donut-container">
+          ${donutSvg}
+          <div style="margin-top:8px;text-align:center">
+            <div class="metric-row" style="justify-content:center">
+              <span class="metric-label">Equity:</span>
+              <span class="metric-value">${equity.toFixed(0)} ${currency}</span>
+            </div>
+            <div class="metric-row" style="justify-content:center">
+              <span class="metric-label">Margin Est:</span>
+              <span class="metric-value">${totalMargin.toFixed(0)} ${currency}</span>
+            </div>
+            <div class="metric-row" style="justify-content:center">
+              <span class="metric-label">Diversification:</span>
+              <span class="metric-value" style="color:${divColor}">${divScore}/100</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Margin by Symbol</h3>
+          <div class="stacked-bar-track">${symbolSegs.length > 0 ? symbolSegs : '<div style="width:100%;text-align:center;color:#9ca3af;font-size:11px;line-height:28px">No positions</div>'}</div>
+          <div style="margin-top:4px">${legendHtml}</div>
+
+          <h3 style="margin-top:12px">Direction Split</h3>
+          ${totalMargin > 0 ? dirBar : '<div style="font-size:11px;color:#9ca3af">No positions</div>'}
+
+          <h3 style="margin-top:16px">Open Positions</h3>
+          <div class="table-wrap" style="border:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Symbol</th><th>Dir</th>
+                  <th style="text-align:right">Lots</th><th style="text-align:right">Entry</th>
+                  <th style="text-align:right">Current</th><th style="text-align:right">P&amp;L</th>
+                  <th style="text-align:right">Margin Est</th>
+                </tr>
+              </thead>
+              <tbody>${posRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+refreshData();
+setInterval(refreshData, REFRESH_INTERVAL);
+
+countdownTimer = setInterval(() => {
+  countdown = Math.max(0, countdown - 1);
+  updateRefreshInfo();
+}, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard - Signal Preview & Position Sizing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #f5f5f5;
+            color: #1f1f1f;
+            padding: 16px;
+            max-width: 1600px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f1f1f;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .header-info .utc-time {
+            color: #666;
+        }
+
+        .header-info .status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Signal Preview Section */
+        .candle-group {
+            margin-bottom: 20px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .candle-header {
+            background: #e5e7eb;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .candle-header .close-time {
+            color: #1f1f1f;
+        }
+
+        .candle-header .countdown {
+            font-family: monospace;
+            color: #dc2626;
+            font-weight: 700;
+        }
+
+        .candle-header .timeframes {
+            color: #6b7280;
+            font-weight: normal;
+            font-size: 12px;
+        }
+
+        .signal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .signal-table th {
+            background: #f9fafb;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #4b5563;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .signal-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+        }
+
+        .signal-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .signal-table tr:hover {
+            background: #f9fafb;
+        }
+
+        /* Direction badges */
+        .direction-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .direction-badge.long {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .direction-badge.short {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Confidence bar */
+        .confidence-cell {
+            min-width: 120px;
+        }
+
+        .confidence-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-bar {
+            font-family: monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #374151;
+        }
+
+        .confidence-value {
+            font-weight: 600;
+            min-width: 40px;
+        }
+
+        .confidence-value.high { color: #16a34a; }
+        .confidence-value.medium { color: #d97706; }
+        .confidence-value.low { color: #6b7280; }
+
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.ready { background: #166534; color: #fff; animation: pulse-ready 1.5s ease-in-out infinite; }
+        .status-badge.locked { background: #dbeafe; color: #1d4ed8; }
+        .status-badge.blocked { background: #fee2e2; color: #991b1b; }
+        .status-badge.conditions_met { background: #FFDE4D; color: #1a1a1a; }
+        .status-badge.approaching { background: #f3f4f6; color: #6b7280; }
+
+        /* Row highlights for actionable signals */
+        tr.row-ready { background: rgba(34, 197, 94, 0.25) !important; border-left: 4px solid #22c55e; }
+        tr.row-ready td { color: #1a1a1a !important; }
+        tr.row-conditions_met { background: rgba(255, 222, 77, 0.15) !important; border-left: 4px solid #FFDE4D; }
+        tr.row-conditions_met td { color: #1a1a1a !important; }
+        tr.row-blocked { background: rgba(239, 68, 68, 0.15) !important; border-left: 4px solid #ef4444; }
+
+        @keyframes pulse-ready {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 8px 4px rgba(34, 197, 94, 0.2); }
+        }
+
+        /* PF and Lots */
+        .pf-cell {
+            font-weight: 600;
+        }
+
+        .pf-value.excellent { color: #16a34a; }
+        .pf-value.good { color: #2563eb; }
+        .pf-value.moderate { color: #d97706; }
+        .pf-value.low { color: #6b7280; }
+
+        .lots-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .lots-badge.tier-05 { background: #dcfce7; color: #166534; }
+        .lots-badge.tier-03 { background: #dbeafe; color: #1d4ed8; }
+        .lots-badge.tier-02 { background: #fef3c7; color: #92400e; }
+        .lots-badge.tier-01 { background: #f3f4f6; color: #4b5563; }
+
+        /* Budget summary panel */
+        .budget-panel {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            color: #e0e7ff;
+            font-size: 13px;
+        }
+        .budget-panel .budget-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+        .budget-panel .budget-row + .budget-row { margin-top: 6px; }
+        .budget-panel strong { color: #a5b4fc; }
+        .budget-panel .budget-label { color: #a5b4fc; font-size: 11px; text-transform: uppercase; }
+        .budget-panel .budget-lots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .budget-panel .lot-chip {
+            background: rgba(165, 180, 252, 0.15);
+            border: 1px solid rgba(165, 180, 252, 0.3);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Conditions list */
+        .conditions-list {
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .condition-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .condition-status {
+            font-weight: bold;
+            width: 14px;
+        }
+
+        .condition-status.met { color: #16a34a; }
+        .condition-status.unmet { color: #dc2626; }
+
+        .condition-name {
+            color: #4b5563;
+        }
+
+        .condition-details {
+            color: #6b7280;
+            font-family: monospace;
+        }
+
+        .condition-need {
+            color: #d97706;
+            font-style: italic;
+        }
+
+        /* Summary stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f1f1f;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .stat-card.green .stat-value { color: #16a34a; }
+        .stat-card.blue .stat-value { color: #2563eb; }
+        .stat-card.orange .stat-value { color: #d97706; }
+        .stat-card.red .stat-value { color: #dc2626; }
+
+        /* Balance section (compact) */
+        .balance-section {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 12px;
+        }
+
+        .balance-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .balance-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #16a34a;
+        }
+
+        .balance-label {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .slider-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-label {
+            font-size: 11px;
+            color: #6b7280;
+            min-width: 50px;
+        }
+
+        /* Symbol allocation grid (compact) */
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+        }
+
+        .symbol-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .symbol-box .symbol-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .symbol-box .lots {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1f1f1f;
+        }
+
+        .symbol-box .margin {
+            font-size: 10px;
+            color: #6b7280;
+        }
+
+        .symbol-box.excellent { border-color: #16a34a; background: #f0fdf4; }
+        .symbol-box.good { border-color: #2563eb; background: #eff6ff; }
+        .symbol-box.warning { border-color: #d97706; background: #fffbeb; }
+        .symbol-box.insufficient { border-color: #dc2626; background: #fef2f2; opacity: 0.6; }
+
+        /* No signals state */
+        .no-signals {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .no-signals .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Paper Trading Status */
+        .paper-trading-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 8px 12px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .paper-trading-status.offline {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .paper-trading-status .status-label {
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .paper-trading-status.offline .status-label {
+            color: #991b1b;
+        }
+
+        /* Active positions */
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .positions-table th {
+            background: #f9fafb;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #4b5563;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .positions-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .pnl-positive { color: #16a34a; font-weight: 600; }
+        .pnl-negative { color: #dc2626; font-weight: 600; }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 8px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .signal-table {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Trading Dashboard <a href="/" style="font-size: 12px; font-weight: normal; margin-left: 12px; color: #3b82f6;">← Main Dashboard</a></h1>
+        <div class="header-info">
+            <span class="utc-time" id="utcTime">UTC: --:--:--</span>
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <span>Auto-refresh: <span id="refreshCountdown">60</span>s</span>
+        </div>
+    </div>
+
+    <!-- Paper Trading Status -->
+    <div class="paper-trading-status" id="paperTradingStatus">
+        <span class="status-label">Paper Trading: Active</span>
+        <span>Last evaluation: <span id="lastEvalTime">--:--</span></span>
+        <span>Next poll in: <span id="nextPoll">--</span>s</span>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card" style="border-left: 3px solid #a78bfa;">
+            <div class="stat-value" style="color: #a78bfa; font-size: 18px;" id="statBalance">--</div>
+            <div class="stat-label">MT5 Balance</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-value" id="totalSignals">--</div>
+            <div class="stat-label">Total Signals</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-value" id="readyToTrade">--</div>
+            <div class="stat-label">READY</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-value" id="conditionsMetCount">--</div>
+            <div class="stat-label">CONDITIONS MET</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-value" id="blockedCount">--</div>
+            <div class="stat-label">BLOCKED</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-value" id="nextClose">--:--</div>
+            <div class="stat-label">Next Candle Close</div>
+        </div>
+    </div>
+
+    <!-- Signal Preview Section -->
+    <div class="card">
+        <div class="card-title">Signal Preview - Grouped by Candle Close</div>
+        <div id="signalPreview">
+            <div class="loading">
+                <span class="loading-spinner"></span>
+                Loading signal preview...
+            </div>
+        </div>
+    </div>
+
+    <!-- Position Sizing Section -->
+    <div class="card">
+        <div class="card-title">Position Sizing (MT5 Account Balance)</div>
+        <div class="balance-section">
+            <div class="balance-display">
+                <span class="balance-value" id="balanceDisplay">Loading...</span>
+                <span class="balance-label">Fetching live balance from MT5...</span>
+            </div>
+        </div>
+        <div class="symbol-grid" id="symbolGrid"></div>
+    </div>
+
+    <!-- Active Positions Section -->
+    <div class="card">
+        <div class="card-title">Active Positions</div>
+        <div id="positionsContainer">
+            <div class="no-signals">
+                <div class="icon">-</div>
+                <div>No active positions</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Issue #631 - Enhanced Trading Dashboard | <a href="balance-visualizer.html">Position Sizing Details</a> | <a href="trades.html">Trade Analytics</a> | <a href="signal-analytics.html">Signal Analytics</a> | <a href="index.html">Main Index</a>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = '';  // Same origin
+        const REFRESH_INTERVAL = 60000;  // 60 seconds
+        let refreshTimer = null;
+        let countdownValue = 60;
+
+        // Symbol configurations for position sizing (Issue #631)
+        // Based on src/paper_trading/balance_allocator.py SYMBOL_CONFIGS
+        // Symbol configurations for position sizing (Issue #631)
+        // Margin calculation from balance_allocator.py:
+        // - Symbols ending with USD: price=1.10 → margin = 110,000/leverage
+        // - Symbols with JPY: base_rate=1.10 → margin = 110,000/leverage
+        // - Other symbols: price=1.0 → margin = 100,000/leverage
+        const SYMBOL_CONFIGS = {
+            // Leverage from balance_allocator.py; marginPerLot = 100000 * estimatedPrice / leverage
+            // Matches Python's calculate_margin_per_lot(symbol, price=1.10) for xUSD pairs
+            'EURUSD': { leverage: 30, baseCurrency: 'EUR' },
+            'GBPUSD': { leverage: 30, baseCurrency: 'GBP' },
+            'USDJPY': { leverage: 30, baseCurrency: 'USD' },
+            'USDCHF': { leverage: 30, baseCurrency: 'USD' },
+            'EURJPY': { leverage: 20, baseCurrency: 'EUR' },
+            'EURGBP': { leverage: 20, baseCurrency: 'EUR' },
+            'EURCAD': { leverage: 20, baseCurrency: 'EUR' },
+            'USDCAD': { leverage: 20, baseCurrency: 'USD' },
+            'GBPJPY': { leverage: 20, baseCurrency: 'GBP' },
+            'AUDUSD': { leverage: 20, baseCurrency: 'AUD' },
+            'NZDUSD': { leverage: 20, baseCurrency: 'NZD' },
+            'XAGUSD': { leverage: 10, baseCurrency: 'XAG' },
+        };
+
+        // Calculate margin per lot matching Python balance_allocator.py calculate_margin_per_lot()
+        // Must match Python's calculate_allocation() which calls:
+        //   endsWith("USD") → price=1.10
+        //   contains("JPY") → base_rate=1.10
+        //   else → price=1.0 (base_rate defaults to 1.0)
+        function getMarginPerLot(symbol) {
+            const config = SYMBOL_CONFIGS[symbol.toUpperCase()] || { leverage: 20, baseCurrency: '' };
+            const leverage = config.leverage;
+            if (config.baseCurrency === 'USD') {
+                return 100000 / leverage;
+            } else if (symbol.toUpperCase().endsWith('USD')) {
+                // xUSD pairs: use estimated rate ~1.10
+                return 100000 * 1.10 / leverage;
+            } else if (symbol.toUpperCase().includes('JPY')) {
+                // JPY cross pairs: base_rate=1.10
+                return 100000 * 1.10 / leverage;
+            } else {
+                // Non-JPY cross pairs (EURGBP, EURCAD): base_rate=1.0
+                return 100000 / leverage;
+            }
+        }
+
+        // Account config (will be updated from API response)
+        const CURRENCY_USD_RATES = { PLN: 0.2817, EUR: 1.05, GBP: 1.22, CHF: 1.08, JPY: 0.0067, CAD: 0.72, USD: 1.0 };
+        let accountConfig = {
+            balance_usd: 13954,  // Default, overwritten by live MT5 fetch
+            currency: 'USD',     // Safe default, overwritten by API response
+            exchange_rate_to_usd: 1.0,
+            max_concurrent: 12
+        };
+
+        // Open positions count per symbol (for diversification)
+        let openPositionsBySymbol = {};
+        // Total margin used by all open positions (Issue #631 fix)
+        let totalMarginUsed = 0;
+
+        // Reference leverage for normalization (from balance_allocator.py)
+        // Ensures PF drives lot sizing, not symbol leverage differences
+        const REFERENCE_LEVERAGE = 25;
+
+        // Diversification rules (from balance_allocator.py)
+        const DIVERSIFICATION = {
+            MAX_SINGLE_SYMBOL_ALLOCATION: 0.25,  // Max 25% per symbol
+            MARGIN_RESERVE_RATIO: 0.10,           // Reserve 10% buffer
+            MIN_POSITION_SIZE: 0.01               // Minimum 0.01 lots
+        };
+
+        // Signal Budget Allocator config (matches paper_trading.yaml risk section)
+        const BUDGET_CONFIG = {
+            LOOKAHEAD_CANDLES: 8,
+            SIGNAL_HIT_RATE: 0.04,
+            MAX_CONCURRENT: 12,
+            MARGIN_RESERVE_RATIO: 0.10,
+            MIN_LOT: 0.01,
+            MAX_LOT: 1.0,
+        };
+
+        const TIMEFRAME_MINUTES = {
+            'M30': 30, 'H1': 60, 'H2': 120, 'H3': 180, 'H4': 240,
+            'H6': 360, 'H8': 480, 'H12': 720, 'D1': 1440,
+        };
+
+        /**
+         * Estimate future signals in the lookahead window.
+         * Ports Python SignalBudgetAllocator._estimate_future_signals()
+         */
+        function estimateFutureSignals(signalsByTf) {
+            const lookaheadMinutes = BUDGET_CONFIG.LOOKAHEAD_CANDLES * 60;
+            let total = 0;
+            for (const [tf, count] of Object.entries(signalsByTf)) {
+                const tfMinutes = TIMEFRAME_MINUTES[tf.toUpperCase()] || 60;
+                const candleCloses = lookaheadMinutes / tfMinutes;
+                total += candleCloses * count * BUDGET_CONFIG.SIGNAL_HIT_RATE;
+            }
+            return Math.max(0, Math.ceil(total));
+        }
+
+        /**
+         * Calculate batch lot sizes for all ready signals.
+         * Ports Python SignalBudgetAllocator.calculate_batch_sizes()
+         *
+         * @param {Array} readySignals - [{key, symbol, profit_factor}, ...]
+         * @param {number} openCount - number of open positions
+         * @param {number} marginUsed - total margin used by open positions
+         * @param {number} equity - account equity in USD
+         * @param {Object} signalsByTf - {H1: 37, H2: 25, ...}
+         * @returns {Object} {lots: {key: lotSize}, summary: {...}}
+         */
+        function calculateBatchSizes(readySignals, openCount, marginUsed, equity, signalsByTf) {
+            const result = { lots: {}, summary: null };
+
+            if (!readySignals.length || equity <= 0) return result;
+
+            const remainingSlots = BUDGET_CONFIG.MAX_CONCURRENT - openCount;
+            if (remainingSlots <= 0) return result;
+
+            const available = Math.max(0, (equity - marginUsed) * (1 - BUDGET_CONFIG.MARGIN_RESERVE_RATIO));
+            if (available <= 0) return result;
+
+            const futureEstimated = estimateFutureSignals(signalsByTf);
+            const readyCount = readySignals.length;
+            const totalSlots = Math.max(1, Math.min(readyCount + futureEstimated, remainingSlots));
+            const budgetPerSlot = available / totalSlots;
+            const candleBudget = readyCount * budgetPerSlot;
+
+            // Kelly-weight distribution
+            let weightSum = 0;
+            const weightValues = {};
+            for (const s of readySignals) {
+                const w = Math.max(s.profit_factor || 1.0, 0.1); // profit_factor carries Kelly weight
+                weightValues[s.key] = w;
+                weightSum += w;
+            }
+
+            if (weightSum <= 0) return result;
+
+            const lots = {};
+            for (const s of readySignals) {
+                const w = weightValues[s.key];
+                const weight = w / weightSum;
+                const dollarAllocation = weight * candleBudget;
+                const marginPerLot = getMarginPerLot(s.symbol);
+
+                if (marginPerLot <= 0) continue;
+
+                let lotSize = dollarAllocation / marginPerLot;
+                lotSize = Math.min(lotSize, BUDGET_CONFIG.MAX_LOT);
+                lotSize = Math.floor(lotSize * 100) / 100;
+                if (lotSize < BUDGET_CONFIG.MIN_LOT) lotSize = 0;
+
+                lots[s.key] = lotSize;
+            }
+
+            result.lots = lots;
+            result.summary = {
+                equity: Math.round(equity),
+                marginUsed: Math.round(marginUsed),
+                available: Math.round(available),
+                openCount,
+                remainingSlots,
+                futureEstimated,
+                totalSlots,
+                budgetPerSlot: Math.round(budgetPerSlot),
+                readyCount,
+                candleBudget: Math.round(candleBudget),
+            };
+
+            return result;
+        }
+
+        /**
+         * Calculate dynamic lot size based on BalanceAllocator logic (Issue #631)
+         * Ported from src/paper_trading/balance_allocator.py
+         *
+         * @param {string} symbol - Trading symbol (e.g., "EURUSD")
+         * @param {number} profitFactor - Signal's profit factor
+         * @param {number} balanceUsd - Account balance in USD
+         * @param {number} existingPositions - Number of existing positions in this symbol
+         * @returns {Object} {lots: number, margin: number, leverage: number, lotStr: string, tierClass: string}
+         */
+        function calculateDynamicLots(symbol, profitFactor, balanceUsd, existingPositions = 0) {
+            const config = SYMBOL_CONFIGS[symbol.toUpperCase()] || { leverage: 20, baseCurrency: '' };
+            const marginPerLot = getMarginPerLot(symbol);
+
+            // Available balance: subtract margin used by open positions, then apply 10% reserve
+            // This matches CLI's BalanceAllocator.calculate_allocation() logic
+            const availableAfterMargin = Math.max(0, balanceUsd - totalMarginUsed);
+            const available = availableAfterMargin * (1 - DIVERSIFICATION.MARGIN_RESERVE_RATIO);
+
+            // Max allocation for this symbol (25% of available)
+            let maxAllocation = available * DIVERSIFICATION.MAX_SINGLE_SYMBOL_ALLOCATION;
+
+            // Reduce allocation if already have positions in this symbol (halve for each)
+            if (existingPositions > 0) {
+                maxAllocation *= Math.pow(0.5, existingPositions);
+            }
+
+            // Calculate max lots from allocation
+            let maxLots = maxAllocation / marginPerLot;
+
+            // Apply Kelly weight as sizing multiplier (replaces PF-based scaling)
+            // weight=1.0 means full size (flat baseline, <10 trades)
+            // weight=0.1-0.5 means half-Kelly with decay
+            const weightMultiplier = Math.min(profitFactor, 1.0); // profitFactor now carries Kelly weight
+
+            // Normalize: convert symbol-specific maxLots to reference-leverage base
+            const referenceMargin = 100000 / REFERENCE_LEVERAGE;
+            const dollarAllocation = maxLots * marginPerLot;
+            const maxLotsNormalized = dollarAllocation / referenceMargin;
+
+            // Apply weight multiplier on normalized (leverage-neutral) base
+            let lotSize = maxLotsNormalized * weightMultiplier;
+
+            // Safety: actual lots cannot exceed what the symbol's real margin allows
+            if (lotSize > maxLots) {
+                lotSize = maxLots;
+            }
+
+            // Round down to 0.01 lot increments
+            lotSize = Math.floor(lotSize * 100) / 100;
+
+            // Clamp to valid range (0.01 to 1.0)
+            lotSize = Math.max(DIVERSIFICATION.MIN_POSITION_SIZE, Math.min(lotSize, 1.0));
+
+            // Calculate margin used
+            const marginUsed = lotSize * marginPerLot;
+
+            // Determine tier class for styling
+            let tierClass;
+            if (lotSize >= 0.5) {
+                tierClass = 'tier-05';
+            } else if (lotSize >= 0.3) {
+                tierClass = 'tier-03';
+            } else if (lotSize >= 0.2) {
+                tierClass = 'tier-02';
+            } else {
+                tierClass = 'tier-01';
+            }
+
+            return {
+                lots: lotSize,
+                margin: marginUsed,
+                leverage: config.leverage,
+                lotStr: `${lotSize.toFixed(2)}L`,
+                tierClass: tierClass
+            };
+        }
+
+        // Legacy function for backward compatibility - now uses dynamic sizing
+        function getLotTierFromPF(pf, symbol = 'EURUSD') {
+            const sizing = calculateDynamicLots(symbol, pf, accountConfig.balance_usd, openPositionsBySymbol[symbol] || 0);
+            return { lots: sizing.lotStr, class: sizing.tierClass };
+        }
+
+        // Format confidence as progress bar
+        function formatProgressBar(confidence) {
+            const filled = Math.round(confidence / 12.5);  // 8 segments
+            const empty = 8 - filled;
+            return '█'.repeat(filled) + '░'.repeat(empty);
+        }
+
+        // Get confidence class
+        function getConfidenceClass(confidence) {
+            if (confidence >= 80) return 'high';
+            if (confidence >= 50) return 'medium';
+            return 'low';
+        }
+
+        // Format time remaining
+        function formatTimeRemaining(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            if (mins < 60) return `${mins}m ${secs}s`;
+            const hours = Math.floor(mins / 60);
+            const remainingMins = mins % 60;
+            return `${hours}h ${remainingMins}m`;
+        }
+
+        // Format condition details for display (with optional fresh indicator values)
+        function formatConditionDisplay(cond, freshIndicators, symbol, timeframe) {
+            const statusIcon = cond.met ? '✓' : '✗';
+            const statusClass = cond.met ? 'met' : 'unmet';
+
+            // Try to get fresh value for this condition
+            let freshValue = null;
+            const key = `${symbol.toUpperCase()}_${timeframe.toUpperCase()}`;
+            const indicators = freshIndicators ? freshIndicators[key] : null;
+
+            if (indicators) {
+                // Map condition names to indicator fields
+                const condLower = cond.name.toLowerCase();
+                if (condLower.includes('stoch_k') || condLower.includes('stoch')) {
+                    freshValue = indicators.stoch_k;
+                } else if (condLower.includes('rsi')) {
+                    freshValue = indicators.rsi_14;
+                } else if (condLower.includes('sma20') || condLower.includes('sma_20')) {
+                    freshValue = indicators.sma_20;
+                } else if (condLower.includes('sma50') || condLower.includes('sma_50')) {
+                    freshValue = indicators.sma_50;
+                } else if (condLower.includes('sma200') || condLower.includes('sma_200')) {
+                    freshValue = indicators.sma_200;
+                } else if (condLower.includes('macd') && condLower.includes('hist')) {
+                    freshValue = indicators.macd_histogram;
+                } else if (condLower.includes('macd') && !condLower.includes('signal')) {
+                    freshValue = indicators.macd_line;
+                } else if (condLower.includes('price') || condLower.includes('bb')) {
+                    freshValue = indicators.close;
+                }
+            }
+
+            // Build display with LIVE values like CLI
+            let details = '';
+            let valueStr = '';
+
+            // Use fresh value if available, otherwise fall back to stored current
+            if (freshValue !== null && freshValue !== undefined) {
+                const numValue = typeof freshValue === 'number' ? freshValue : parseFloat(freshValue);
+                if (!isNaN(numValue)) {
+                    valueStr = numValue < 10 ? numValue.toFixed(4) : numValue.toFixed(2);
+                } else {
+                    valueStr = String(freshValue);
+                }
+            } else if (cond.current && cond.current !== '') {
+                valueStr = cond.current;
+            }
+
+            if (valueStr && cond.required) {
+                const currentNum = parseFloat(valueStr);
+                const reqMatch = cond.required.match(/([<>]=?)\s*([\d.]+)/);
+                if (reqMatch && !isNaN(currentNum)) {
+                    const operator = reqMatch[1];
+                    const threshold = parseFloat(reqMatch[2]);
+                    const distance = currentNum - threshold;
+
+                    if (cond.met) {
+                        // Show how much above/below threshold
+                        const distStr = Math.abs(distance) < 0.01 ? Math.abs(distance).toFixed(4) : Math.abs(distance).toFixed(2);
+                        const aboveBelow = distance > 0 ? 'above' : 'below';
+                        details = ` <span style="color: #059669;">${valueStr} ${operator}${threshold} ✓${distStr} ${aboveBelow}</span>`;
+                    } else {
+                        // Show what's needed
+                        const needDir = operator.includes('>') ? '+' : '-';
+                        const needVal = Math.abs(distance) < 0.01 ? Math.abs(distance).toFixed(4) : Math.abs(distance).toFixed(2);
+                        details = ` <span style="color: #d97706;">${valueStr} ${operator}${threshold} Need ${needDir}${needVal}</span>`;
+                    }
+                } else {
+                    details = valueStr ? ` (${valueStr})` : '';
+                }
+            }
+
+            return `
+                <div class="condition-item">
+                    <span class="condition-status ${statusClass}">${statusIcon}</span>
+                    <span class="condition-name">${cond.name}</span>
+                    <span class="condition-details">${details}</span>
+                </div>
+            `;
+        }
+
+        // MT5 broker (OANDATMS) stores timestamps in CET/CEST, not UTC.
+        // Verified 2026-02-25: broker offset is +3600s (1h) from UTC in winter.
+        // CET = UTC+1 (Nov-Feb), CEST = UTC+2 (Apr-Sep).
+        function getBrokerUtcOffsetMs(timestampMs) {
+            const d = new Date(timestampMs);
+            const month = d.getUTCMonth();
+            if (month >= 10 || month <= 1) return 3600000;
+            if (month >= 3 && month <= 8) return 7200000;
+            const year = d.getUTCFullYear();
+            const lastDay = new Date(Date.UTC(year, month + 1, 0));
+            const lastSunday = new Date(Date.UTC(year, month, lastDay.getUTCDate() - lastDay.getUTCDay()));
+            lastSunday.setUTCHours(1, 0, 0, 0);
+            if (month === 2) return timestampMs >= lastSunday.getTime() ? 7200000 : 3600000;
+            return timestampMs >= lastSunday.getTime() ? 3600000 : 7200000;
+        }
+        function brokerToUTC(timestampMs) {
+            return timestampMs - getBrokerUtcOffsetMs(timestampMs);
+        }
+
+        // Format fresh indicator display
+        function formatFreshIndicators(freshIndicators, symbol, timeframe) {
+            const key = `${symbol.toUpperCase()}_${timeframe.toUpperCase()}`;
+            const indicators = freshIndicators[key];
+
+            if (!indicators) {
+                return '';
+            }
+
+            // Format timestamp as HH:MM:SS
+            const ts = new Date(brokerToUTC(indicators.timestamp));
+            const timeStr = ts.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: 'UTC',
+                hour12: false
+            });
+
+            // Format indicator values (show -- for null, convert strings to numbers)
+            const stochKVal = indicators.stoch_k !== null && indicators.stoch_k !== undefined ? parseFloat(indicators.stoch_k) : NaN;
+            const rsiVal = indicators.rsi_14 !== null && indicators.rsi_14 !== undefined ? parseFloat(indicators.rsi_14) : NaN;
+            const stochK = !isNaN(stochKVal) ? stochKVal.toFixed(2) : '--';
+            const rsi = !isNaN(rsiVal) ? rsiVal.toFixed(2) : '--';
+
+            return `
+                <div style="border-top: 1px dashed #e5e7eb; margin-top: 6px; padding-top: 4px; font-size: 11px;">
+                    <span style="color: #059669; font-weight: 600;">LIVE:</span>
+                    <span style="color: #374151;">Stoch=${stochK}</span>
+                    <span style="color: #374151; margin-left: 8px;">RSI=${rsi}</span>
+                    <small style="color: #9ca3af; margin-left: 8px;">${timeStr}</small>
+                </div>
+            `;
+        }
+
+        function isForexMarketOpen() {
+            const now = new Date();
+            const day = now.getUTCDay();
+            const hour = now.getUTCHours();
+            if (day === 6) return false;
+            if (day === 0 && hour < 22) return false;
+            if (day === 5 && hour >= 22) return false;
+            return true;
+        }
+
+        function getNextMarketOpen() {
+            const now = new Date();
+            const target = new Date(now);
+            const day = now.getUTCDay();
+            if (day === 6) {
+                target.setUTCDate(target.getUTCDate() + 1);
+            } else if (day === 5 && now.getUTCHours() >= 22) {
+                target.setUTCDate(target.getUTCDate() + 2);
+            }
+            target.setUTCHours(22, 0, 0, 0);
+            return target;
+        }
+
+        // Render signal preview
+        function renderSignalPreview(data) {
+            const container = document.getElementById('signalPreview');
+
+            if (!data || !data.data || !data.data.candle_groups || data.data.candle_groups.length === 0) {
+                if (!isForexMarketOpen()) {
+                    const openTime = getNextMarketOpen();
+                    const dayName = openTime.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+                    container.innerHTML = `
+                        <div class="no-signals">
+                            <div class="icon">🌙</div>
+                            <div>Markets Closed</div>
+                            <div style="font-size: 12px; margin-top: 8px;">
+                                Forex markets reopen ${dayName} 22:00 UTC
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="no-signals">
+                            <div class="icon">📊</div>
+                            <div>No signal previews available</div>
+                            <div style="font-size: 12px; margin-top: 8px;">
+                                Waiting for paper-trading evaluator to generate snapshots...
+                            </div>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            // Compute batch allocation for READY/CONDITIONS_MET signals
+            const readyForBatch = [];
+            for (const group of data.data.candle_groups) {
+                for (const signal of (group.signals || [])) {
+                    const st = signal.status || 'APPROACHING';
+                    if (st === 'READY' || st === 'CONDITIONS_MET') {
+                        const wKey = `${signal.symbol.toUpperCase()}:${signal.direction.toUpperCase()}:${signal.signal_name}`;
+                        const wEntry = (data._signalWeights || {})[wKey];
+                        const wVal = wEntry ? wEntry.weight : 1.0;
+                        readyForBatch.push({
+                            key: `${signal.symbol.toUpperCase()}:${signal.direction}:${signal.signal_name}:${(signal.timeframe || 'H1').toUpperCase()}`,
+                            symbol: signal.symbol.toUpperCase(),
+                            profit_factor: wVal,  // now carries Kelly weight
+                        });
+                    }
+                }
+            }
+            const openCount = Object.values(openPositionsBySymbol).reduce((a, b) => a + b, 0);
+            const batchResult = calculateBatchSizes(
+                readyForBatch, openCount, totalMarginUsed,
+                accountConfig.balance_usd, data._signalsByTf || {}
+            );
+            const batchLots = batchResult.lots;
+            const budgetSummary = batchResult.summary;
+
+            let html = '';
+            const now = new Date();
+
+            // Budget allocation panel
+            if (budgetSummary) {
+                const lotChips = Object.entries(batchLots)
+                    .filter(([, v]) => v > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([key, lots]) => {
+                        const parts = key.split(':');
+                        const sym = parts[0] || '';
+                        const dir = (parts[1] || '')[0]?.toUpperCase() || '';
+                        return `<span class="lot-chip">${sym} ${dir} ${lots.toFixed(2)}L</span>`;
+                    }).join('');
+
+                html += `
+                    <div class="budget-panel">
+                        <div class="budget-row">
+                            <span>Equity <strong>$${budgetSummary.equity.toLocaleString()}</strong></span>
+                            <span>Margin <strong>$${budgetSummary.marginUsed.toLocaleString()}</strong></span>
+                            <span>Available <strong>$${budgetSummary.available.toLocaleString()}</strong></span>
+                            <span style="color: #818cf8;">after ${Math.round(BUDGET_CONFIG.MARGIN_RESERVE_RATIO * 100)}% reserve</span>
+                        </div>
+                        <div class="budget-row">
+                            <span>Slots: <strong>${budgetSummary.openCount}/${BUDGET_CONFIG.MAX_CONCURRENT}</strong> open</span>
+                            <span>Future est: <strong>${budgetSummary.futureEstimated}</strong></span>
+                            <span>Total slots: <strong>${budgetSummary.totalSlots}</strong></span>
+                            <span>$/Slot: <strong>$${budgetSummary.budgetPerSlot.toLocaleString()}</strong></span>
+                        </div>
+                        <div class="budget-row">
+                            <span><strong>${budgetSummary.readyCount}</strong> READY</span>
+                            <span>Candle budget: <strong>$${budgetSummary.candleBudget.toLocaleString()}</strong></span>
+                        </div>
+                        ${lotChips ? `<div class="budget-lots">${lotChips}</div>` : ''}
+                    </div>
+                `;
+            }
+
+            for (const group of data.data.candle_groups) {
+                const closeTime = new Date(group.close_time);
+                const timeStr = closeTime.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                }) + ' UTC';
+
+                const countdown = formatTimeRemaining(group.seconds_until);
+                const timeframes = group.timeframes.join(', ');
+
+                html += `
+                    <div class="candle-group">
+                        <div class="candle-header">
+                            <span class="close-time">Next Close: ${timeStr}</span>
+                            <span class="countdown">${countdown}</span>
+                            <span class="timeframes">${timeframes}</span>
+                        </div>
+                        <table class="signal-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Dir</th>
+                                    <th>Signal</th>
+                                    <th>TF</th>
+                                    <th>Status</th>
+                                    <th>Weight</th>
+                                    <th>Lots</th>
+                                    <th>Conditions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                for (const signal of group.signals) {
+                    const dirClass = signal.direction === 'long' ? 'long' : 'short';
+                    // Calculate confidence from conditions_met / conditions_total
+                    const conditions = signal.conditions || [];
+                    const conditionsMet = conditions.filter(c => c.met === true).length;
+                    const conditionsTotal = conditions.length;
+                    const calculatedConf = conditionsTotal > 0
+                        ? Math.round((conditionsMet / conditionsTotal) * 100)
+                        : parseFloat(signal.confidence || 0);
+
+                    // Status badge (from Python evaluator or fallback)
+                    const status = signal.status || (calculatedConf >= 100 ? 'CONDITIONS_MET' : 'APPROACHING');
+                    const statusClass = status.toLowerCase();
+                    const statusLabels = {
+                        'READY': 'READY',
+                        'LOCKED': 'LOCKED',
+                        'BLOCKED': 'BLOCKED',
+                        'CONDITIONS_MET': 'COND MET',
+                        'APPROACHING': `${conditionsMet}/${conditionsTotal}`,
+                    };
+                    const statusLabel = statusLabels[status] || status;
+                    const blockedReason = signal.blocked_reason || '';
+                    const statusExplanations = {
+                        'READY': 'Fresh crossover — will open at next candle close',
+                        'LOCKED': 'Already traded this crossover',
+                        'BLOCKED': 'Position open for this signal',
+                        'CONDITIONS_MET': 'No fresh crossover detected',
+                    };
+                    const statusExplanation = statusExplanations[status] || '';
+
+                    // Get Kelly weight from signal-weights API
+                    const weightKey = `${signal.symbol.toUpperCase()}:${signal.direction.toUpperCase()}:${signal.signal_name}`;
+                    const weightEntry = (data._signalWeights || {})[weightKey];
+                    const weight = weightEntry ? weightEntry.weight : 1.0;
+                    const weightTotal = weightEntry ? (weightEntry.wins + weightEntry.losses) : 0;
+                    const weightStr = weightEntry ? weight.toFixed(2) : '1.00';
+                    const weightClass = weight >= 0.2 ? 'excellent' : weight >= 0.15 ? 'good' : weight >= 0.1 ? 'moderate' : 'low';
+                    if (!weightEntry || weightTotal < 10) {
+                        // Show "flat" style for signals without enough trades
+                    }
+
+                    // Lot sizing: use batch allocator for READY/CONDITIONS_MET, fallback for others
+                    const symbolUpper = signal.symbol.toUpperCase();
+                    const signalKey = `${symbolUpper}:${signal.direction}:${signal.signal_name}:${(signal.timeframe || 'H1').toUpperCase()}`;
+                    const batchLot = batchLots[signalKey];
+                    let dynamicSizing;
+                    if (batchLot !== undefined && batchLot > 0 && (status === 'READY' || status === 'CONDITIONS_MET')) {
+                        const marginPerLot = getMarginPerLot(symbolUpper);
+                        const config = SYMBOL_CONFIGS[symbolUpper] || { leverage: 20 };
+                        dynamicSizing = {
+                            lots: batchLot,
+                            margin: batchLot * marginPerLot,
+                            leverage: config.leverage,
+                            lotStr: `${batchLot.toFixed(2)}L`,
+                            tierClass: batchLot >= 0.5 ? 'tier-05' : batchLot >= 0.3 ? 'tier-03' : batchLot >= 0.2 ? 'tier-02' : 'tier-01',
+                        };
+                    } else {
+                        const existingPositions = openPositionsBySymbol[symbolUpper] || 0;
+                        dynamicSizing = calculateDynamicLots(symbolUpper, weight, accountConfig.balance_usd, existingPositions);
+                    }
+                    const lotTier = { lots: dynamicSizing.lotStr, class: dynamicSizing.tierClass };
+
+                    // Format conditions with fresh indicator values
+                    const freshIndicators = data.data.fresh_indicators || {};
+                    let conditionsHtml = '';
+                    if (signal.conditions && signal.conditions.length > 0) {
+                        for (const cond of signal.conditions) {
+                            conditionsHtml += formatConditionDisplay(cond, freshIndicators, signal.symbol, signal.timeframe);
+                        }
+                    } else {
+                        conditionsHtml = '<span style="color: #9ca3af;">No conditions data</span>';
+                    }
+
+                    // Add fresh indicators summary line
+                    const freshHtml = formatFreshIndicators(freshIndicators, signal.symbol, signal.timeframe);
+
+                    const rowClass = (status === 'READY' || status === 'LOCKED' || status === 'BLOCKED' || status === 'CONDITIONS_MET') ? `row-${statusClass}` : '';
+                    html += `
+                        <tr class="${rowClass}">
+                            <td><strong>${signal.symbol}</strong></td>
+                            <td><span class="direction-badge ${dirClass}">${signal.direction}</span></td>
+                            <td>${signal.signal_name}</td>
+                            <td>${signal.timeframe}</td>
+                            <td class="confidence-cell">
+                                <span class="status-badge ${statusClass}">${statusLabel}</span>
+                                ${status === 'APPROACHING' ? '' : `<div style="font-size: 10px; margin-top: 2px;">${conditionsMet}/${conditionsTotal} conditions</div>`}
+                            </td>
+                            <td class="pf-cell">
+                                <span class="pf-value ${weightClass}" title="Kelly weight (${weightTotal} trades)">${weightStr}</span>
+                            </td>
+                            <td>
+                                <span class="lots-badge ${lotTier.class}">${lotTier.lots}</span>
+                                <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">
+                                    ${Math.round(dynamicSizing.margin / (CURRENCY_USD_RATES[accountConfig.currency] || 0.2817)).toLocaleString()} ${accountConfig.currency} ${dynamicSizing.leverage}x
+                                </div>
+                            </td>
+                            <td>
+                                <div class="conditions-list">
+                                    ${conditionsHtml}
+                                    ${freshHtml}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+
+            // Update stats — count by status
+            let readyCount = 0, condMetCount = 0, blockedCount = 0, totalSignals = 0;
+            for (const group of data.data.candle_groups) {
+                totalSignals += group.signals.length;
+                for (const signal of group.signals) {
+                    if (signal.status === 'READY') readyCount++;
+                    else if (signal.status === 'CONDITIONS_MET') condMetCount++;
+                    else if (signal.status === 'BLOCKED') blockedCount++;
+                }
+            }
+            // Show balance in account currency + USD
+            const balUsd = Math.round(accountConfig.balance_usd);
+            const acctCurrency = accountConfig.currency || 'PLN';
+            const acctRate = CURRENCY_USD_RATES[acctCurrency] || 0.2817;
+            const balLocal = Math.round(balUsd / acctRate);
+            document.getElementById('statBalance').innerHTML = `${balLocal.toLocaleString()} ${acctCurrency}<br><span style="font-size:13px;color:#c4b5fd;">$${balUsd.toLocaleString()} USD</span>`;
+            document.getElementById('totalSignals').textContent = totalSignals;
+            document.getElementById('readyToTrade').textContent = readyCount;
+            document.getElementById('conditionsMetCount').textContent = condMetCount;
+            document.getElementById('blockedCount').textContent = blockedCount;
+
+            if (data.metadata.next_close) {
+                const nextClose = new Date(data.metadata.next_close);
+                document.getElementById('nextClose').textContent = nextClose.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                });
+                document.getElementById('nextClose').parentElement.querySelector('.stat-label').textContent = 'Next Candle Close';
+            } else if (!isForexMarketOpen()) {
+                document.getElementById('nextClose').textContent = 'Sun 22:00';
+                document.getElementById('nextClose').parentElement.querySelector('.stat-label').textContent = 'Market Open';
+            }
+        }
+
+        // Calculate position allocation (Issue #631: Updated to use dynamic sizing)
+        function calculateAllocation(balance) {
+            const allocations = {};
+            for (const [symbol, config] of Object.entries(SYMBOL_CONFIGS)) {
+                const existingPositions = openPositionsBySymbol[symbol] || 0;
+                // Use PF of 2.0 as average for position sizing display (75% of max)
+                const sizing = calculateDynamicLots(symbol, 2.0, balance, existingPositions);
+
+                let status;
+                if (sizing.lots >= 0.3) status = 'excellent';
+                else if (sizing.lots >= 0.2) status = 'good';
+                else if (sizing.lots >= 0.1) status = 'warning';
+                else status = 'insufficient';
+
+                allocations[symbol] = {
+                    maxLots: sizing.lots,
+                    margin: sizing.margin,
+                    status,
+                    leverage: config.leverage,
+                    existingPositions
+                };
+            }
+            return allocations;
+        }
+
+        // Render symbol grid (Issue #631: Updated to show margin info)
+        function renderSymbolGrid(balance) {
+            const allocations = calculateAllocation(balance);
+            const grid = document.getElementById('symbolGrid');
+
+            const sorted = Object.entries(allocations)
+                .sort((a, b) => b[1].maxLots - a[1].maxLots);
+
+            grid.innerHTML = sorted.map(([symbol, alloc]) => `
+                <div class="symbol-box ${alloc.status}">
+                    <div class="symbol-name">${symbol}${alloc.existingPositions > 0 ? ` <small style="color: #f59e0b;">(${alloc.existingPositions} open)</small>` : ''}</div>
+                    <div class="lots">${alloc.maxLots.toFixed(2)}L</div>
+                    <div class="margin">${Math.round(alloc.margin / (CURRENCY_USD_RATES[accountConfig.currency] || 0.2817)).toLocaleString()} ${accountConfig.currency} ${alloc.leverage}x</div>
+                </div>
+            `).join('');
+        }
+
+        // Fetch open positions to count positions per symbol and total margin (Issue #631)
+        async function fetchOpenPositions() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/paper-trading/positions`);
+                if (!resp.ok) return { counts: {}, marginUsed: 0 };
+                const data = await resp.json();
+                const counts = {};
+                let marginUsed = 0;
+                for (const pos of (data.data || data.positions || [])) {
+                    const symbol = (pos.symbol || '').toUpperCase();
+                    if (symbol) {
+                        counts[symbol] = (counts[symbol] || 0) + 1;
+                    }
+                    // Calculate margin: lots * 100000 * entry_price / leverage
+                    // Matches CLI's monitor_signal_preview.py calculation
+                    if (pos.lots && symbol) {
+                        const config = SYMBOL_CONFIGS[symbol] || { leverage: 20 };
+                        const entryPrice = parseFloat(pos.entry_price) || 1.0;
+                        marginUsed += parseFloat(pos.lots) * 100000 * entryPrice / config.leverage;
+                    }
+                }
+                return { counts, marginUsed };
+            } catch (error) {
+                console.warn('Failed to fetch open positions:', error);
+                return { counts: {}, marginUsed: 0 };
+            }
+        }
+
+        // TFG: No MT5 broker connection
+        async function fetchMT5Account() {
+            return null;
+        }
+
+        // Fetch signal preview
+        async function fetchSignalPreview() {
+            try {
+                // Fetch signal preview, approved models, open positions, and MT5 balance in parallel
+                const [previewRes, approvedRes, positionData, , weightsRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/paper-trading/signal-preview`),
+                    fetch(`${API_BASE}/api/signals/approved-models`),
+                    fetchOpenPositions(),
+                    fetchMT5Account(),
+                    fetch(`${API_BASE}/api/paper-trading/signal-weights`).catch(() => null)
+                ]);
+
+                // Parse signal weights (Kelly)
+                let signalWeights = {};
+                if (weightsRes && weightsRes.ok) {
+                    const wData = await weightsRes.json();
+                    signalWeights = wData.data || {};
+                }
+
+                // Issue #631: Update open positions for diversification and margin calculation
+                openPositionsBySymbol = positionData.counts || {};
+                totalMarginUsed = positionData.marginUsed || 0;
+
+                if (!previewRes.ok) throw new Error(`HTTP ${previewRes.status}`);
+                const data = await previewRes.json();
+
+                // Issue #631: Update account config from API response (skip balance if live MT5 is active)
+                if (data.metadata && data.metadata.account) {
+                    if (!window._mt5LiveBalance) {
+                        accountConfig = {
+                            ...accountConfig,
+                            ...data.metadata.account
+                        };
+                        // Update balance display in UI only when not using live MT5
+                        const balanceUsd = accountConfig.balance_usd;
+                        const rate = CURRENCY_USD_RATES[accountConfig.currency] || accountConfig.exchange_rate_to_usd || 1.0;
+                        const balanceLocal = balanceUsd / rate;
+                        document.getElementById('balanceDisplay').textContent = `$${balanceUsd.toLocaleString()}`;
+                        document.querySelector('.balance-label').textContent =
+                            `${balanceLocal.toLocaleString(undefined, {maximumFractionDigits: 2})} ${accountConfig.currency} @ ${rate} USD/${accountConfig.currency}`;
+                    } else {
+                        // Still pick up non-balance fields from metadata
+                        const { balance_usd, ...rest } = data.metadata.account;
+                        accountConfig = { ...accountConfig, ...rest };
+                    }
+                }
+
+                // Build PF lookup from approved_models API (for display enrichment only)
+                // Backend already filters by approved_models via SQL JOIN
+                const pfLookup = new Map();
+                if (approvedRes.ok) {
+                    const approvedData = await approvedRes.json();
+                    const approvedModels = approvedData.data || approvedData.models || [];
+                    for (const m of approvedModels) {
+                        const key = `${(m.symbol || '').toLowerCase()}_${(m.direction || '').toLowerCase()}_${m.signalName || m.signal_name || ''}_${(m.timeframe || '').toLowerCase()}`;
+                        pfLookup.set(key, parseFloat(m.phase5Pf || m.phase5_pf || m.profit_factor || m.pf || 1.0));
+                    }
+                }
+
+                // Count ALL configured signals by timeframe BEFORE filtering
+                // (needed for batch allocator's future estimation)
+                if (data.data && data.data.candle_groups) {
+                    const signalsByTf = {};
+                    for (const group of data.data.candle_groups) {
+                        for (const s of (group.signals || [])) {
+                            const tf = (s.timeframe || 'H1').toUpperCase();
+                            signalsByTf[tf] = (signalsByTf[tf] || 0) + 1;
+                        }
+                    }
+                    data._signalsByTf = signalsByTf;
+                }
+
+                // Filter: show all statusful signals + APPROACHING with >=50% conditions met
+                if (data.data && data.data.candle_groups) {
+                    data.data.candle_groups = data.data.candle_groups.map(group => ({
+                        ...group,
+                        signals: (group.signals || []).filter(s => {
+                            // Always show signals with actionable status
+                            if (s.status === 'READY' || s.status === 'CONDITIONS_MET' || s.status === 'BLOCKED' || s.status === 'LOCKED') return true;
+                            // For APPROACHING: filter out LOW confidence (<50% conditions met)
+                            const conds = s.conditions || [];
+                            const met = conds.filter(c => c.met === true).length;
+                            const total = conds.length;
+                            const conf = total > 0 ? (met / total) * 100 : 0;
+                            return conf >= 50;
+                        }).map(s => {
+                            // Attach PF value from approved_models lookup
+                            const signalKey = `${(s.symbol || '').toLowerCase()}_${(s.direction || '').toLowerCase()}_${s.signal_name || ''}_${(s.timeframe || '').toLowerCase()}`;
+                            s._pf = pfLookup.get(signalKey) || null;
+                            return s;
+                        })
+                    })).filter(group => group.signals.length > 0);
+
+                    // Update metadata with filtered count
+                    let totalSignals = 0;
+                    let highConfidence = 0;
+                    for (const group of data.data.candle_groups) {
+                        totalSignals += group.signals.length;
+                        for (const s of group.signals) {
+                            const conds = s.conditions || [];
+                            const met = conds.filter(c => c.met === true).length;
+                            const total = conds.length;
+                            const conf = total > 0 ? (met / total) * 100 : 0;
+                            if (conf >= 80) highConfidence++;
+                        }
+                    }
+                    data.metadata = data.metadata || {};
+                    data.metadata.total_signals = totalSignals;
+                    data.metadata.total_high_confidence = highConfidence;
+                }
+
+                data._signalWeights = signalWeights;
+                renderSignalPreview(data);
+
+                // Update status
+                document.getElementById('statusDot').style.background = '#22c55e';
+                document.getElementById('statusText').textContent = 'Connected';
+
+                // Update last eval time
+                if (data.data && data.data.last_update) {
+                    const lastUpdate = new Date(data.data.last_update);
+                    document.getElementById('lastEvalTime').textContent = lastUpdate.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        timeZone: 'UTC'
+                    });
+                }
+
+                // Issue #631: Re-render symbol grid with updated account config and positions
+                renderSymbolGrid(accountConfig.balance_usd);
+            } catch (error) {
+                console.error('Failed to fetch signal preview:', error);
+                document.getElementById('statusDot').style.background = '#ef4444';
+                document.getElementById('statusText').textContent = 'Error';
+                document.getElementById('signalPreview').innerHTML = `
+                    <div class="no-signals">
+                        <div class="icon">⚠️</div>
+                        <div>Failed to load signal preview</div>
+                        <div style="font-size: 12px; margin-top: 8px;">
+                            ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Update UTC time
+        function updateUTCTime() {
+            const now = new Date();
+            document.getElementById('utcTime').textContent = 'UTC: ' + now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: 'UTC',
+                hour12: false
+            });
+        }
+
+        // Countdown timer
+        function updateCountdown() {
+            countdownValue--;
+            document.getElementById('refreshCountdown').textContent = countdownValue;
+
+            // Estimate next poll (60s cycle)
+            const nextPoll = countdownValue % 60;
+            document.getElementById('nextPoll').textContent = nextPoll || 60;
+
+            if (countdownValue <= 0) {
+                countdownValue = 60;
+                fetchSignalPreview();
+            }
+        }
+
+        // Initialize
+        async function init() {
+            // Fetch live MT5 balance first, then render
+            await fetchMT5Account();
+            renderSymbolGrid(accountConfig.balance_usd);
+
+            // Fetch signal preview (this will update signals + positions)
+            fetchSignalPreview();
+
+            // Start timers
+            setInterval(updateUTCTime, 1000);
+            setInterval(updateCountdown, 1000);
+            updateUTCTime();
+        }
+
+        // Start on DOM ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

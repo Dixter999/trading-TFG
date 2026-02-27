@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Position Sizing Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #1f1f1f;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f1f1f;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Balance Slider Section */
+        .balance-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .balance-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .balance-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #059669;
+        }
+
+        .balance-label {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .slider-label {
+            font-size: 12px;
+            color: #6b7280;
+            min-width: 60px;
+        }
+
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f1f1f;
+        }
+
+        .summary-card .label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .summary-card.green .value { color: #059669; }
+        .summary-card.blue .value { color: #3b82f6; }
+        .summary-card.orange .value { color: #d97706; }
+        .summary-card.purple .value { color: #7c3aed; }
+
+        /* Symbol Allocation Grid */
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .symbol-box {
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .symbol-box:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .symbol-box .symbol-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .symbol-box .bar-container {
+            height: 40px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .symbol-box .bar {
+            width: 100%;
+            background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.3s ease;
+        }
+
+        .symbol-box .lots {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f1f1f;
+        }
+
+        .symbol-box .margin {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .symbol-box .leverage {
+            font-size: 10px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+
+        /* Color states */
+        .symbol-box.excellent .bar { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
+        .symbol-box.good .bar { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); }
+        .symbol-box.warning .bar { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
+        .symbol-box.insufficient .bar { background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); }
+
+        .symbol-box.excellent { border-color: #10b981; }
+        .symbol-box.good { border-color: #3b82f6; }
+        .symbol-box.warning { border-color: #f59e0b; }
+        .symbol-box.insufficient { border-color: #ef4444; opacity: 0.6; }
+
+        /* Diversification Meter */
+        .diversification-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 16px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .meter-container {
+            flex: 1;
+        }
+
+        .meter-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .meter {
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .meter-fill.excellent { background: linear-gradient(90deg, #10b981, #059669); }
+        .meter-fill.good { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+        .meter-fill.warning { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .meter-fill.poor { background: linear-gradient(90deg, #ef4444, #dc2626); }
+
+        .score-display {
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .score-display .score {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .score-display .score-label {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .score-display.excellent .score { color: #059669; }
+        .score-display.good .score { color: #3b82f6; }
+        .score-display.warning .score { color: #d97706; }
+        .score-display.poor .score { color: #ef4444; }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 16px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .legend-color.excellent { background: #10b981; }
+        .legend-color.good { background: #3b82f6; }
+        .legend-color.warning { background: #f59e0b; }
+        .legend-color.insufficient { background: #ef4444; }
+
+        /* Info text */
+        .info-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 12px;
+            padding: 12px;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Dynamic Position Sizing Visualizer</h1>
+        <p>Issue #630 - Intelligent Balance-Based Position Allocation</p>
+    </div>
+
+    <!-- Balance Slider -->
+    <div class="card">
+        <div class="card-title">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Account Balance
+        </div>
+        <div class="balance-section">
+            <div class="balance-display">
+                <div>
+                    <div class="balance-value" id="balanceDisplay">$5,000</div>
+                    <div class="balance-label">Available for Trading</div>
+                </div>
+                <div style="text-align: right;">
+                    <div id="availableBalance" style="font-size: 20px; font-weight: 600; color: #3b82f6;">$4,500</div>
+                    <div class="balance-label">After 10% Reserve</div>
+                </div>
+            </div>
+            <div class="slider-container">
+                <span class="slider-label">$500</span>
+                <input type="range" class="slider" id="balanceSlider" min="500" max="50000" value="5000" step="100">
+                <span class="slider-label">$50,000</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+        <div class="summary-card green">
+            <div class="value" id="tradeableSymbols">8</div>
+            <div class="label">Tradeable Symbols</div>
+        </div>
+        <div class="summary-card blue">
+            <div class="value" id="maxTotalLots">1.20</div>
+            <div class="label">Max Total Lots</div>
+        </div>
+        <div class="summary-card orange">
+            <div class="value" id="marginUtilization">85%</div>
+            <div class="label">Margin Utilization</div>
+        </div>
+        <div class="summary-card purple">
+            <div class="value" id="avgLotSize">0.15</div>
+            <div class="label">Avg Lot per Symbol</div>
+        </div>
+    </div>
+
+    <!-- Diversification Score -->
+    <div class="card">
+        <div class="card-title">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            Diversification Score
+        </div>
+        <div class="diversification-section">
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>Poor</span>
+                    <span>Moderate</span>
+                    <span>Excellent</span>
+                </div>
+                <div class="meter">
+                    <div class="meter-fill excellent" id="diversificationMeter" style="width: 87%;"></div>
+                </div>
+            </div>
+            <div class="score-display excellent" id="scoreDisplay">
+                <div class="score" id="diversificationScore">87%</div>
+                <div class="score-label">Excellent</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Symbol Allocation -->
+    <div class="card">
+        <div class="card-title">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+            </svg>
+            Symbol Allocation
+        </div>
+        <div class="symbol-grid" id="symbolGrid">
+            <!-- Symbols will be rendered here -->
+        </div>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color excellent"></div>
+                <span>Excellent (>0.2 lots)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color good"></div>
+                <span>Good (0.1-0.2 lots)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color warning"></div>
+                <span>Limited (0.01-0.1 lots)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color insufficient"></div>
+                <span>Insufficient Margin</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info -->
+    <div class="info-text" id="infoText">
+        With a $5,000 balance, you can diversify across 8 symbols with an average of 0.15 lots each.
+        The 10% margin reserve ($500) provides a safety buffer for drawdowns.
+    </div>
+
+    <div class="footer">
+        <p>Dynamic Position Sizing System - Issue #630 | <a href="index.html">Back to Dashboard</a></p>
+    </div>
+
+    <script>
+        // Symbol configurations matching Python backend
+        const SYMBOL_CONFIGS = {
+            'EURUSD': { leverage: 30, pipValue: 10.0, color: '#3b82f6', marginPerLot: 3666.67 },
+            'GBPUSD': { leverage: 30, pipValue: 10.0, color: '#10b981', marginPerLot: 4233.33 },
+            'USDJPY': { leverage: 30, pipValue: 6.67, color: '#f59e0b', marginPerLot: 3333.33 },
+            'USDCHF': { leverage: 30, pipValue: 10.0, color: '#8b5cf6', marginPerLot: 3333.33 },
+            'EURJPY': { leverage: 20, pipValue: 6.67, color: '#ec4899', marginPerLot: 5500.00 },
+            'EURGBP': { leverage: 20, pipValue: 10.0, color: '#06b6d4', marginPerLot: 5500.00 },
+            'GBPJPY': { leverage: 20, pipValue: 6.67, color: '#84cc16', marginPerLot: 6350.00 },
+            'AUDUSD': { leverage: 20, pipValue: 10.0, color: '#f97316', marginPerLot: 5000.00 },
+            'USDCAD': { leverage: 20, pipValue: 7.50, color: '#14b8a6', marginPerLot: 5000.00 },
+            'NZDUSD': { leverage: 20, pipValue: 10.0, color: '#a855f7', marginPerLot: 5000.00 },
+            'EURCAD': { leverage: 20, pipValue: 7.50, color: '#f43f5e', marginPerLot: 5500.00 },
+            'AUDCAD': { leverage: 20, pipValue: 7.50, color: '#0ea5e9', marginPerLot: 5000.00 },
+        };
+
+        // Diversification rules
+        const RULES = {
+            MAX_SINGLE_SYMBOL_ALLOCATION: 0.25,  // Max 25% per symbol
+            MAX_SINGLE_DIRECTION_ALLOCATION: 0.60,
+            MIN_POSITION_SIZE: 0.01,
+            MARGIN_RESERVE_RATIO: 0.10
+        };
+
+        // Calculate allocation for all symbols
+        function calculateAllocation(balance) {
+            const availableBalance = balance * (1 - RULES.MARGIN_RESERVE_RATIO);
+            const maxPerSymbol = availableBalance * RULES.MAX_SINGLE_SYMBOL_ALLOCATION;
+
+            const allocations = {};
+            let totalLots = 0;
+            let totalMargin = 0;
+            let tradeableCount = 0;
+
+            for (const [symbol, config] of Object.entries(SYMBOL_CONFIGS)) {
+                const maxLots = Math.floor((maxPerSymbol / config.marginPerLot) * 100) / 100;
+                const marginRequired = maxLots * config.marginPerLot;
+
+                let status;
+                if (maxLots >= 0.2) status = 'excellent';
+                else if (maxLots >= 0.1) status = 'good';
+                else if (maxLots >= RULES.MIN_POSITION_SIZE) status = 'warning';
+                else status = 'insufficient';
+
+                if (maxLots >= RULES.MIN_POSITION_SIZE) {
+                    tradeableCount++;
+                    totalLots += maxLots;
+                    totalMargin += marginRequired;
+                }
+
+                allocations[symbol] = {
+                    maxLots: Math.max(0, maxLots),
+                    marginRequired: marginRequired,
+                    leverage: config.leverage,
+                    status: status
+                };
+            }
+
+            return {
+                allocations,
+                totalLots: Math.round(totalLots * 100) / 100,
+                totalMargin: Math.round(totalMargin),
+                tradeableCount,
+                availableBalance: Math.round(availableBalance),
+                marginUtilization: totalMargin > 0 ? Math.round((totalMargin / availableBalance) * 100) : 0,
+                avgLotSize: tradeableCount > 0 ? Math.round((totalLots / tradeableCount) * 100) / 100 : 0
+            };
+        }
+
+        // Calculate diversification score
+        function calculateDiversificationScore(allocations, tradeableCount) {
+            // Symbol diversity (40% of score)
+            const maxSymbols = Object.keys(SYMBOL_CONFIGS).length;
+            const symbolScore = (tradeableCount / maxSymbols) * 100;
+
+            // Even distribution (30% of score)
+            const lots = Object.values(allocations)
+                .map(a => a.maxLots)
+                .filter(l => l >= RULES.MIN_POSITION_SIZE);
+
+            let evenScore = 100;
+            if (lots.length > 1) {
+                const avg = lots.reduce((a, b) => a + b, 0) / lots.length;
+                const variance = lots.reduce((sum, l) => sum + Math.pow((l - avg) / avg, 2), 0) / lots.length;
+                evenScore = Math.max(0, 100 - (variance * 100));
+            }
+
+            // Balance utilization (30% of score)
+            const utilizationScore = 100; // Assume good if tradeable
+
+            const finalScore = Math.round((symbolScore * 0.4) + (evenScore * 0.3) + (utilizationScore * 0.3));
+            return Math.min(100, finalScore);
+        }
+
+        // Render symbol boxes
+        function renderSymbols(allocations) {
+            const grid = document.getElementById('symbolGrid');
+            grid.innerHTML = '';
+
+            // Sort by max lots descending
+            const sorted = Object.entries(allocations)
+                .sort((a, b) => b[1].maxLots - a[1].maxLots);
+
+            const maxLots = Math.max(...sorted.map(([_, a]) => a.maxLots), 0.01);
+
+            for (const [symbol, alloc] of sorted) {
+                const barHeight = alloc.maxLots > 0 ? Math.max(10, (alloc.maxLots / maxLots) * 100) : 5;
+
+                const box = document.createElement('div');
+                box.className = `symbol-box ${alloc.status}`;
+                box.innerHTML = `
+                    <div class="symbol-name">${symbol}</div>
+                    <div class="bar-container">
+                        <div class="bar" style="height: ${barHeight}%;"></div>
+                    </div>
+                    <div class="lots">${alloc.maxLots.toFixed(2)} lots</div>
+                    <div class="margin">$${Math.round(alloc.marginRequired).toLocaleString()}</div>
+                    <div class="leverage">${alloc.leverage}x leverage</div>
+                `;
+                grid.appendChild(box);
+            }
+        }
+
+        // Update UI
+        function updateUI(balance) {
+            const result = calculateAllocation(balance);
+            const diversificationScore = calculateDiversificationScore(result.allocations, result.tradeableCount);
+
+            // Update balance display
+            document.getElementById('balanceDisplay').textContent = `$${balance.toLocaleString()}`;
+            document.getElementById('availableBalance').textContent = `$${result.availableBalance.toLocaleString()}`;
+
+            // Update summary cards
+            document.getElementById('tradeableSymbols').textContent = result.tradeableCount;
+            document.getElementById('maxTotalLots').textContent = result.totalLots.toFixed(2);
+            document.getElementById('marginUtilization').textContent = `${result.marginUtilization}%`;
+            document.getElementById('avgLotSize').textContent = result.avgLotSize.toFixed(2);
+
+            // Update diversification score
+            document.getElementById('diversificationScore').textContent = `${diversificationScore}%`;
+            document.getElementById('diversificationMeter').style.width = `${diversificationScore}%`;
+
+            // Update score class
+            let scoreClass, scoreLabel;
+            if (diversificationScore >= 80) { scoreClass = 'excellent'; scoreLabel = 'Excellent'; }
+            else if (diversificationScore >= 60) { scoreClass = 'good'; scoreLabel = 'Good'; }
+            else if (diversificationScore >= 40) { scoreClass = 'warning'; scoreLabel = 'Moderate'; }
+            else { scoreClass = 'poor'; scoreLabel = 'Poor'; }
+
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            scoreDisplay.className = `score-display ${scoreClass}`;
+            scoreDisplay.querySelector('.score-label').textContent = scoreLabel;
+
+            const meter = document.getElementById('diversificationMeter');
+            meter.className = `meter-fill ${scoreClass}`;
+
+            // Render symbols
+            renderSymbols(result.allocations);
+
+            // Update info text
+            const reserve = Math.round(balance * RULES.MARGIN_RESERVE_RATIO);
+            let infoText = `With a $${balance.toLocaleString()} balance, `;
+
+            if (result.tradeableCount === 0) {
+                infoText += `the margin is insufficient for any trading positions. Consider increasing your balance above $1,000.`;
+            } else if (result.tradeableCount < 4) {
+                infoText += `you can only trade ${result.tradeableCount} symbol(s) with limited diversification. Consider increasing balance for better risk distribution.`;
+            } else {
+                infoText += `you can diversify across ${result.tradeableCount} symbols with an average of ${result.avgLotSize.toFixed(2)} lots each. The 10% margin reserve ($${reserve.toLocaleString()}) provides a safety buffer for drawdowns.`;
+            }
+
+            document.getElementById('infoText').textContent = infoText;
+        }
+
+        // Initialize
+        const slider = document.getElementById('balanceSlider');
+        slider.addEventListener('input', (e) => {
+            updateUI(parseInt(e.target.value));
+        });
+
+        // Initial render
+        updateUI(5000);
+    </script>
+</body>
+</html>
