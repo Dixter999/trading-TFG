@@ -1,0 +1,26 @@
+# Database Configuration Template
+# This file defines the structure for database connections
+# Actual credentials are loaded from environment variables
+
+databases:
+  markets:
+    description: "Markets Database (READ-ONLY)"
+    host: "${MARKETS_DB_HOST}"
+    port: ${MARKETS_DB_PORT}
+    database: "${MARKETS_DB_NAME}"
+    user: "${MARKETS_DB_USER}"
+    password: "${MARKETS_DB_PASSWORD}"
+    pool_size: ${MARKETS_DB_POOL_SIZE}
+    max_overflow: ${MARKETS_DB_MAX_OVERFLOW}
+    read_only: true
+
+  ai_model:
+    description: "AI Model Database (READ-WRITE)"
+    host: "${AI_MODEL_DB_HOST}"
+    port: ${AI_MODEL_DB_PORT}
+    database: "${AI_MODEL_DB_NAME}"
+    user: "${AI_MODEL_DB_USER}"
+    password: "${AI_MODEL_DB_PASSWORD}"
+    pool_size: ${AI_MODEL_DB_POOL_SIZE}
+    max_overflow: ${AI_MODEL_DB_MAX_OVERFLOW}
+    read_only: false
