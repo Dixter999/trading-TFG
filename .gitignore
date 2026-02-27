@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Data files (too large for Git — see data/README.md)
+data/rates/*.csv
+data/indicators/*.csv
+data/trades/*.csv
+data/analysis/*.csv
+!data/sample/
+
+# Trained models (large binary files)
+models/hybrid_v4/*/fold_*.zip
+models/hybrid_v4/*/*.zip
+
+# Results (generated)
+results/
+htmlcov/
+.coverage
+.pytest_cache/
+*.log
+
+# Node.js
+node_modules/
+backend/node_modules/
+
+# Docker
+.docker/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_metadata/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+.claude-code/
