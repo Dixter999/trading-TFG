@@ -26,11 +26,14 @@ ENV/
 .env.*.local
 
 # Data files (too large for Git — see data/README.md)
-data/rates/*.csv
-data/indicators/*.csv
-data/trades/*.csv
-data/analysis/*.csv
+data/rates/
+data/indicators/
+data/trades/
+data/analysis/
+
+# Sample data IS tracked (small subsets for quick testing)
 !data/sample/
+!data/sample/**
 
 # Trained models (large binary files)
 models/hybrid_v4/*/fold_*.zip
