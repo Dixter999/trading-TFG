@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Data (mounted as volumes, not baked into image)
+data/rates/
+data/indicators/
+data/trades/
+data/analysis/
+data/sample/
+
+# Models (mounted as volumes)
+models/
+
+# Results (mounted as volumes)
+results/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+__pycache__/
+*.pyc
+
+# Node (backend has its own Dockerfile)
+backend/
+frontend-simple/
+
+# Docs
+docs/
+notebooks/
+*.md
+*.png
+*.jpg

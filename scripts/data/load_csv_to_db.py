@@ -101,8 +101,10 @@ def get_connection():
 
 def copy_df_to_table(df: pd.DataFrame, table: str, columns: list[str]) -> int:
     """Bulk-insert a DataFrame via COPY FROM (fastest psycopg2 path)."""
+    clean = df[columns].copy()
+    clean.replace("", pd.NA, inplace=True)
     buf = io.StringIO()
-    df[columns].to_csv(buf, index=False, header=False, sep="\t", na_rep="\\N")
+    clean.to_csv(buf, index=False, header=False, sep="\t", na_rep="\\N")
     buf.seek(0)
 
     conn = get_connection()
@@ -196,7 +198,12 @@ def load_rates(data_dir: Path, append: bool) -> int:
 
 
 def load_indicators(data_dir: Path, append: bool) -> int:
-    """Load technical_indicator_*.csv files from data_dir/indicators/."""
+    """Load technical_indicator_*.csv files into per-symbol tables.
+
+    Each file technical_indicator_{symbol}.csv is loaded into the
+    corresponding technical_indicator_{symbol} table (used by the backend API).
+    Also loads into the combined technical_indicators table for backward compat.
+    """
     ind_dir = data_dir / "indicators"
     if not ind_dir.is_dir():
         print(f"  [skip] {ind_dir} not found")
@@ -216,12 +223,22 @@ def load_indicators(data_dir: Path, append: bool) -> int:
         print(f"  Loading {f.name} ...", end=" ", flush=True)
         df = pd.read_csv(f, dtype=str, keep_default_na=False)
 
-        # Ensure all expected columns exist.
         for col in INDICATORS_COLS:
             if col not in df.columns:
                 df[col] = ""
 
+        # Load into combined table
         rows = copy_df_to_table(df, "technical_indicators", INDICATORS_COLS)
+
+        # Also load into per-symbol table (e.g. technical_indicator_eurusd)
+        table_name = f.stem  # e.g. "technical_indicator_eurusd"
+        try:
+            if not append:
+                truncate_table(table_name)
+            copy_df_to_table(df, table_name, INDICATORS_COLS)
+        except Exception as e:
+            print(f"[warn] per-symbol table {table_name}: {e}")
+
         total += rows
         print(f"{rows:,} rows")
 

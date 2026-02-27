@@ -151,3 +151,106 @@ CREATE INDEX IF NOT EXISTS idx_sd_symbol_dir
     ON signal_discoveries (symbol, direction);
 CREATE INDEX IF NOT EXISTS idx_sd_discovery_date
     ON signal_discoveries (discovery_date);
+
+
+-- ============================================================
+-- 5. Per-symbol indicator tables (used by backend API)
+--    Same schema as technical_indicators but one table per symbol.
+-- ============================================================
+DO $$
+DECLARE
+    sym TEXT;
+BEGIN
+    FOREACH sym IN ARRAY ARRAY['eurusd','gbpusd','usdjpy','eurjpy','usdcad','eurcad','usdchf','eurgbp']
+    LOOP
+        EXECUTE format(
+            'CREATE TABLE IF NOT EXISTS technical_indicator_%s (
+                id           SERIAL PRIMARY KEY,
+                symbol       VARCHAR(10)  NOT NULL DEFAULT %L,
+                timeframe    VARCHAR(5)   NOT NULL,
+                timestamp    TIMESTAMPTZ  NOT NULL,
+                open         NUMERIC(15,8),
+                high         NUMERIC(15,8),
+                low          NUMERIC(15,8),
+                close        NUMERIC(15,8),
+                volume       NUMERIC(15,2),
+                sma_20       NUMERIC(18,10),
+                sma_50       NUMERIC(18,10),
+                sma_200      NUMERIC(18,10),
+                ema_12       NUMERIC(18,10),
+                ema_26       NUMERIC(18,10),
+                ema_50       NUMERIC(18,10),
+                rsi_14       NUMERIC(18,10),
+                atr_14       NUMERIC(18,10),
+                bb_upper_20  NUMERIC(18,10),
+                bb_middle_20 NUMERIC(18,10),
+                bb_lower_20  NUMERIC(18,10),
+                macd_line    NUMERIC(18,10),
+                macd_signal  NUMERIC(18,10),
+                macd_histogram NUMERIC(18,10),
+                created_at   TIMESTAMPTZ,
+                updated_at   TIMESTAMPTZ,
+                stoch_k      NUMERIC(18,10),
+                stoch_d      NUMERIC(18,10),
+                ob_bullish_high  NUMERIC(15,8),
+                ob_bullish_low   NUMERIC(15,8),
+                ob_bearish_high  NUMERIC(15,8),
+                ob_bearish_low   NUMERIC(15,8)
+            )', sym, UPPER(sym));
+
+        EXECUTE format(
+            'CREATE INDEX IF NOT EXISTS idx_ti_%s_tf_ts
+                ON technical_indicator_%s (symbol, timeframe, timestamp)', sym, sym);
+    END LOOP;
+END
+$$;
+
+
+-- ============================================================
+-- 6. signal_preview_snapshots - real-time signal confidence
+-- ============================================================
+CREATE TABLE IF NOT EXISTS signal_preview_snapshots (
+    id              SERIAL PRIMARY KEY,
+    timestamp       TIMESTAMPTZ NOT NULL,
+    symbol          VARCHAR(10) NOT NULL,
+    direction       VARCHAR(10) NOT NULL,
+    signal_name     VARCHAR(100) NOT NULL,
+    timeframe       VARCHAR(10) NOT NULL,
+    confidence      DECIMAL(5,2) NOT NULL,
+    conditions_met  JSONB NOT NULL DEFAULT '{}',
+    indicator_values JSONB NOT NULL DEFAULT '{}',
+    next_candle_close TIMESTAMPTZ NOT NULL,
+    triggered       BOOLEAN DEFAULT FALSE,
+    status          VARCHAR(20),
+    blocked_reason  VARCHAR(100),
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sps_symbol_dir
+    ON signal_preview_snapshots (symbol, direction);
+CREATE INDEX IF NOT EXISTS idx_sps_timestamp
+    ON signal_preview_snapshots (timestamp DESC);
+
+
+-- ============================================================
+-- 7. paper_positions - open positions
+-- ============================================================
+CREATE TABLE IF NOT EXISTS paper_positions (
+    id              SERIAL PRIMARY KEY,
+    symbol          VARCHAR(10)  NOT NULL,
+    direction       VARCHAR(5)   NOT NULL,
+    entry_time      TIMESTAMPTZ  NOT NULL,
+    entry_price     NUMERIC(15,8) NOT NULL,
+    sl_price        NUMERIC(15,8) NOT NULL,
+    tp_price        NUMERIC(15,8) NOT NULL,
+    size            NUMERIC(12,4) NOT NULL,
+    unrealized_pnl  NUMERIC(12,4),
+    updated_at      TIMESTAMPTZ,
+    entry_model     VARCHAR(100),
+    signal_timeframe VARCHAR(5),
+    ticket          BIGINT NULL,
+    is_live         BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pp_symbol_dir
+    ON paper_positions (symbol, direction);

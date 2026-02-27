@@ -1442,8 +1442,27 @@
             }
         }
 
-        // TFG: No MT5 broker connection
+        // Fetch live MT5 account balance
         async function fetchMT5Account() {
+            try {
+                const resp = await fetch('/api/mt5/trading/account', { signal: AbortSignal.timeout(5000) });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                if (data && data.equity) {
+                    const currency = data.currency || 'USD';
+                    const rate = CURRENCY_USD_RATES[currency] || accountConfig.exchange_rate_to_usd || 1.0;
+                    const equityUsd = currency !== 'USD' ? data.equity * rate : data.equity;
+                    accountConfig.balance_usd = equityUsd;
+                    accountConfig.currency = currency;
+                    document.getElementById('balanceDisplay').textContent = `$${Math.round(equityUsd).toLocaleString()}`;
+                    document.querySelector('.balance-label').textContent =
+                        `${data.equity.toLocaleString(undefined, {maximumFractionDigits: 2})} ${currency} @ ${rate} USD/${currency} (LIVE)`;
+                    window._mt5LiveBalance = true;
+                    return data;
+                }
+            } catch (e) {
+                console.warn('MT5 Gateway unreachable, using cached balance:', e.message);
+            }
             return null;
         }
 

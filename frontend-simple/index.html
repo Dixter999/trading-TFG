@@ -2517,12 +2517,73 @@
         let _mt5HistoryDeals = []; // MT5 closed deal history
 
         async function fetchMT5Positions() {
-            // TFG: No MT5 broker connection
+            try {
+                const resp = await fetch('/api/mt5/trading/positions', { signal: AbortSignal.timeout(5000) });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    _mt5Positions = data;
+                    return data;
+                }
+                if (data && Array.isArray(data.positions)) {
+                    _mt5Positions = data.positions;
+                    return data.positions;
+                }
+            } catch (e) {
+                console.warn('MT5 positions unreachable:', e.message);
+            }
             return null;
         }
 
         async function fetchMT5HistoryDeals() {
-            // TFG: No MT5 broker connection
+            try {
+                // Fetch last 7 days of history to cover all visible trades
+                // date_to needs +2 days because MT5 broker is UTC+2 (late UTC closes = next broker day)
+                const dateTo = new Date();
+                dateTo.setDate(dateTo.getDate() + 2);
+                const dateFrom = new Date();
+                dateFrom.setDate(dateFrom.getDate() - 7);
+                const fmt = d => d.toISOString().split('T')[0];
+                const resp = await fetch(`/api/mt5/trading/history/deals?date_from=${fmt(dateFrom)}&date_to=${fmt(dateTo)}`, { signal: AbortSignal.timeout(5000) });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const deals = data.deals || data;
+                if (!Array.isArray(deals)) return;
+
+                // Group by position_id, aggregate profit/swap/commission for close deals
+                const posMap = {};
+                for (const deal of deals) {
+                    const pid = deal.position_id;
+                    if (!posMap[pid]) posMap[pid] = { entries: [], exits: [] };
+                    if (deal.entry === 0) posMap[pid].entries.push(deal);
+                    else if (deal.entry === 1) posMap[pid].exits.push(deal);
+                }
+
+                // Build lookup: each closed MT5 position with entry time in UTC
+                _mt5HistoryDeals = [];
+                for (const [pid, p] of Object.entries(posMap)) {
+                    if (p.entries.length === 0) continue;
+                    const entry = p.entries[0];
+                    const totalProfit = p.exits.reduce((s, x) => s + x.profit, 0);
+                    const totalSwap = p.exits.reduce((s, x) => s + x.swap, 0);
+                    const isClosed = p.exits.length > 0;
+                    // MT5 deal times are EET/EEST (1h ahead of rate CET/CEST)
+                    const dealOffsetMs = getBrokerUtcOffsetMs(entry.time * 1000) + 3600000;
+                    const entryUtcSec = entry.time - dealOffsetMs / 1000;
+                    _mt5HistoryDeals.push({
+                        position_id: parseInt(pid),
+                        symbol: (entry.symbol || '').replace('.pro', '').toUpperCase(),
+                        direction: entry.type === 0 ? 'long' : 'short',
+                        volume: entry.volume,
+                        entry_time_utc: entryUtcSec,
+                        profit: totalProfit,
+                        swap: totalSwap,
+                        is_closed: isClosed
+                    });
+                }
+            } catch (e) {
+                console.warn('MT5 history deals unreachable:', e.message);
+            }
         }
 
         function matchMT5Position(paperSymbol, paperDirection, paperTicket) {
@@ -3873,7 +3934,30 @@ Last: ${perf.last_trade ? new Date(perf.last_trade).toLocaleDateString() : '-'}`
         const CURRENCY_USD_RATES = { PLN: 0.2817, EUR: 1.05, GBP: 1.22, CHF: 1.08, JPY: 0.0067, CAD: 0.72, USD: 1.0 };
 
         async function fetchMT5Account() {
-            // TFG: No MT5 broker connection
+            try {
+                const resp = await fetch('/api/mt5/trading/account', { signal: AbortSignal.timeout(5000) });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                if (data && data.equity) {
+                    const currency = data.currency || 'USD';
+                    _mt5Currency = currency;
+                    const rate = CURRENCY_USD_RATES[currency] || 1.0;
+                    const equityUsd = currency !== 'USD' ? data.equity * rate : data.equity;
+                    _mt5Balance = equityUsd;
+                    const balEl = document.getElementById('balancePLN');
+                    const srcEl = document.getElementById('balanceSource');
+                    if (balEl) balEl.textContent = `${data.equity.toLocaleString(undefined, {maximumFractionDigits: 2})} ${currency} ≈ $${Math.round(equityUsd).toLocaleString()} USD`;
+                    if (srcEl) srcEl.textContent = '→ LIVE MT5 account';
+                    return data;
+                }
+            } catch (e) {
+                console.warn('MT5 Gateway unreachable:', e.message);
+            }
+            // Fallback to static
+            const balEl = document.getElementById('balancePLN');
+            const srcEl = document.getElementById('balanceSource');
+            if (balEl && !_mt5Balance) balEl.textContent = 'Fetching MT5...';
+            if (srcEl && !_mt5Balance) srcEl.textContent = '→ waiting for gateway';
             return null;
         }
 

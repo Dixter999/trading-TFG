@@ -251,15 +251,62 @@ function getTradeWeight(t) {
 }
 
 async function fetchMT5Account() {
-  // TFG: No MT5 broker connection
+  try {
+    const resp = await fetch('/api/mt5/trading/account', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && data.currency) _mt5Currency = data.currency;
+  } catch (e) { console.warn('MT5 account unreachable:', e.message); }
 }
 
 async function fetchMT5HistoryDeals() {
-  // TFG: No MT5 broker connection
+  try {
+    const dateTo = new Date(); dateTo.setDate(dateTo.getDate() + 2); // +2 because MT5 broker is UTC+2
+    const dateFrom = new Date(); dateFrom.setDate(dateFrom.getDate() - 60);
+    const f = d => d.toISOString().split('T')[0];
+    const resp = await fetch(`/api/mt5/trading/history/deals?date_from=${f(dateFrom)}&date_to=${f(dateTo)}`, { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const deals = data.deals || data;
+    if (!Array.isArray(deals)) return;
+    const posMap = {};
+    for (const deal of deals) {
+      const pid = deal.position_id;
+      if (!posMap[pid]) posMap[pid] = { entries: [], exits: [] };
+      if (deal.entry === 0) posMap[pid].entries.push(deal);
+      else if (deal.entry === 1) posMap[pid].exits.push(deal);
+    }
+    _mt5HistoryDeals = [];
+    for (const [pid, p] of Object.entries(posMap)) {
+      if (p.entries.length === 0) continue;
+      const entry = p.entries[0];
+      const entryUtcSec = entry.time - 7200;
+      const lastExit = p.exits.length > 0 ? p.exits[p.exits.length - 1] : null;
+      _mt5HistoryDeals.push({
+        position_id: parseInt(pid),
+        symbol: (entry.symbol || '').replace('.pro', '').toUpperCase(),
+        direction: entry.type === 0 ? 'long' : 'short',
+        volume: entry.volume,
+        entry_time_utc: entryUtcSec,
+        exit_time_utc: lastExit ? lastExit.time - 7200 : null,
+        entry_price: entry.price,
+        exit_price: lastExit ? lastExit.price : null,
+        profit: p.exits.reduce((s, x) => s + x.profit, 0),
+        swap: p.exits.reduce((s, x) => s + x.swap, 0),
+        is_closed: p.exits.length > 0
+      });
+    }
+  } catch (e) { console.warn('MT5 history deals unreachable:', e.message); }
 }
 
 async function fetchMT5Positions() {
-  // TFG: No MT5 broker connection
+  try {
+    const resp = await fetch('/api/mt5/trading/positions', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (Array.isArray(data)) { _mt5Positions = data; return data; }
+    if (data && Array.isArray(data.positions)) { _mt5Positions = data.positions; return data.positions; }
+  } catch (e) { console.warn('MT5 positions unreachable:', e.message); }
   return null;
 }
 

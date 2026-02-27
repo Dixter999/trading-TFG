@@ -265,7 +265,11 @@ async function fetchPositions() {
 }
 
 async function fetchMT5Account() {
-  // TFG: No MT5 broker connection
+  try {
+    const resp = await fetch('/api/mt5/trading/account', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    mt5Account = await resp.json();
+  } catch (e) { console.warn('MT5 account unreachable:', e.message); }
 }
 
 async function fetchLifecycleSummary() {

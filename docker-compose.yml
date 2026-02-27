@@ -1,0 +1,105 @@
+services:
+  # ── PostgreSQL 15 ──────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: tfg_user
+      POSTGRES_PASSWORD: tfg_password
+      POSTGRES_DB: ai_model
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Init scripts run alphabetically on first start only
+      - ./docker/init-db:/docker-entrypoint-initdb.d
+      # Mount the SQL schema so the shell script can reference it
+      - ./scripts/data/init_db.sql:/app/scripts/data/init_db.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tfg_user -d ai_model"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Node.js Backend API ────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      MARKETS_DB_HOST: db
+      MARKETS_DB_PORT: "5432"
+      MARKETS_DB_NAME: markets
+      MARKETS_DB_USER: tfg_user
+      MARKETS_DB_PASSWORD: tfg_password
+      AI_MODEL_DB_HOST: db
+      AI_MODEL_DB_PORT: "5432"
+      AI_MODEL_DB_NAME: ai_model
+      AI_MODEL_DB_USER: tfg_user
+      AI_MODEL_DB_PASSWORD: tfg_password
+    ports:
+      - "3000:3000"
+
+  # ── Frontend (nginx serving static HTML) ───────────────────
+  frontend:
+    build:
+      context: ./frontend-simple
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+  # ── CSV Data Loader (one-shot) ─────────────────────────────
+  # Usage: docker compose --profile loader run --rm db-loader
+  #        docker compose --profile loader run --rm db-loader python scripts/data/load_all.py --sample
+  db-loader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["loader"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AI_MODEL_DB_HOST: db
+      AI_MODEL_DB_PORT: "5432"
+      AI_MODEL_DB_NAME: ai_model
+      AI_MODEL_DB_USER: tfg_user
+      AI_MODEL_DB_PASSWORD: tfg_password
+      MARKETS_DB_HOST: db
+      MARKETS_DB_PORT: "5432"
+      MARKETS_DB_NAME: markets
+      MARKETS_DB_USER: tfg_user
+      MARKETS_DB_PASSWORD: tfg_password
+    volumes:
+      # Mount local data directory (CSVs are gitignored, see data/README.md)
+      - ./data:/app/data:ro
+    command: ["python", "scripts/data/load_all.py"]
+
+  # ── Training Environment (Python + ML deps) ───────────────
+  # Usage: docker compose --profile training run training python scripts/pipelines/run_hybrid_v4_pipeline.py --symbol eurusd --direction long
+  training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["training"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AI_MODEL_DB_HOST: db
+      AI_MODEL_DB_PORT: "5432"
+      AI_MODEL_DB_NAME: ai_model
+      AI_MODEL_DB_USER: tfg_user
+      AI_MODEL_DB_PASSWORD: tfg_password
+    volumes:
+      - ./models:/app/models
+      - ./results:/app/results
+      - ./config:/app/config
+      - ./data:/app/data:ro
+
+volumes:
+  pgdata:
